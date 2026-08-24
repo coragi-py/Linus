@@ -1,0 +1,20 @@
+# Ambientes e Dependências
+venv/
+env/
+node_modules/
+dist/
+build/
+
+# Python & Django
+*.pyc
+__pycache__/
+db.sqlite3
+*.log
+.pytest_cache/
+
+# Variáveis de Ambiente & IDEs
+.env
+.env.local
+.vscode/
+.idea/
+.DS_Store

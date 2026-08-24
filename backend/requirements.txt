@@ -1,0 +1,35 @@
+# Django & Framework Web
+Django>=5.1,<6.0
+djangorestframework>=3.15.0
+django-cors-headers>=4.3.0
+django-filter>=24.0
+
+# Autenticação, JWT e OAuth
+djangorestframework-simplejwt>=5.3.0
+google-auth>=2.28.0
+
+# Banco de Dados & Cache
+psycopg2-binary>=2.9.9
+dj-database-url>=2.1.0
+redis>=5.0.0
+django-redis>=5.4.0
+
+# IA & Integrações Externas
+google-genai>=0.1.0
+
+# Documentação OpenAPI / Swagger
+drf-spectacular>=0.27.0
+
+# Servidor WSGI de Produção & Variáveis de Ambiente
+gunicorn>=21.2.0
+python-dotenv>=1.0.0
+
+# Observabilidade & APM
+sentry-sdk[django]>=1.40.0
+datadog>=0.48.0
+
+# Testes & Qualidade
+pytest>=8.0.0
+pytest-django>=4.8.0
+flake8>=7.0.0
+black>=24.0.0
