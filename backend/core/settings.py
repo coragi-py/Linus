@@ -46,14 +46,19 @@ INSTALLED_APPS = [
     "drf_spectacular",
 
     # Apps do Projeto Linus
-    "authentication",
-    "assessment",
-    "modules",
+    "accounts",
+    "ai_gateway",
+    "audit",
+    "common",
+    "exercises",
     "exercises",
     "gamification",
     "glossary",
-    "chatbot",
-    "audit",
+    "learning",
+    "modules",
+    "placement",
+    "progress",
+    "progress",  
 ]
 
 MIDDLEWARE = [

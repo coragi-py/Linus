@@ -8,11 +8,9 @@ django-filter>=24.0
 djangorestframework-simplejwt>=5.3.0
 google-auth>=2.28.0
 
-# Banco de Dados & Cache
+# Persistência de dados
 psycopg2-binary>=2.9.9
 dj-database-url>=2.1.0
-redis>=5.0.0
-django-redis>=5.4.0
 
 # IA & Integrações Externas
 google-genai>=0.1.0
@@ -23,10 +21,6 @@ drf-spectacular>=0.27.0
 # Servidor WSGI de Produção & Variáveis de Ambiente
 gunicorn>=21.2.0
 python-dotenv>=1.0.0
-
-# Observabilidade & APM
-sentry-sdk[django]>=1.40.0
-datadog>=0.48.0
 
 # Testes & Qualidade
 pytest>=8.0.0
