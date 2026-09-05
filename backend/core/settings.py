@@ -76,6 +76,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True # Alterar para False em produção e definir CORS_ALLOWED_ORIGINS com os domínios permitidos
+
 # Configuração do Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -143,7 +145,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "pt-br"
 
-TIME_ZONE = "UTC-03:00"
+TIME_ZONE = "America/Sao_Paulo"
 
 USE_I18N = True
 

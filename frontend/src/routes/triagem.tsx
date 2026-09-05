@@ -1,23 +1,20 @@
-// Esse arquivo é responsável pela tela de triagem do usuário, que determina o nível de habilidade musical antes do registro.
-
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-// Importe o seu componente de partitura, se houver uma pergunta visual
-// import Stave from '@/components/Stave';
+import axios from "axios";
+import Stave from "@/components/Stave";
 
 export const Route = createFileRoute("/triagem")({
   component: Triagem,
 });
 
-// Tipagem baseada no que virá do Django (/api/v1/placement/)
 interface Question {
   id: string;
   enunciado: string;
   opcoes: { id: string; texto: string }[];
   tipo: "texto" | "partitura";
-  dados_partitura?: any; // Para renderizar o VexFlow, se necessário
+  dados_partitura?: any;
 }
 
 function Triagem() {
@@ -28,36 +25,22 @@ function Triagem() {
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<{ nivel: string; sessionKey: string } | null>(null);
 
-  // 1. Busca as perguntas do Backend (sem hardcode)
+  // Busca as perguntas cadastradas no painel admin do Django
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        // Substituir por chamada Axios real: axios.get('/api/v1/placement/questions')
-        // Mock temporário para simular o retorno dinâmico do admin:
-        const mockBackendResponse: Question[] = [
-          {
-            id: "q1",
-            enunciado: "Qual é o seu nível de experiência com leitura de partituras?",
-            tipo: "texto",
-            opcoes: [
-              { id: "a", texto: "Nunca li uma partitura (Iniciante Absoluto)" },
-              { id: "b", texto: "Sei o básico, mas leio devagar (Intermediário)" },
-              { id: "c", texto: "Toco de ouvido, mas não leio (Praticante Empírico)" },
-            ],
-          },
-        ];
-        setQuestions(mockBackendResponse);
+        const response = await axios.get("http://127.0.0.1:8000/api/v1/placement/questions/");
+        setQuestions(response.data);
       } catch (error) {
         console.error("Erro ao buscar perguntas da triagem:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchQuestions();
   }, []);
 
-  // 2. Lida com a seleção da resposta
+  // Registra a resposta e avança ou finaliza a triagem
   const handleAnswer = async (optionId: string) => {
     const currentQ = questions[currentIndex];
     const newAnswers = { ...answers, [currentQ.id]: optionId };
@@ -66,20 +49,20 @@ function Triagem() {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // 3. Finaliza a triagem e envia respostas para o backend
-      // axios.post('/api/v1/placement/submit', { respostas: newAnswers })
-
-      // Mock do resultado processado pelo servidor
-      setResult({
-        nivel: "Iniciante",
-        sessionKey: "sess_12345abcde", // Chave para persistir o nível na criação da conta
-      });
+      try {
+        // Envia as respostas para o backend calcular o nível e gerar a sessão
+        const response = await axios.post("http://127.0.0.1:8000/api/v1/placement/submit/", {
+          respostas: newAnswers,
+        });
+        setResult(response.data);
+      } catch (error) {
+        console.error("Erro ao processar triagem:", error);
+      }
     }
   };
 
-  // 4. Redirecionamento CRÍTICO para a tela de Registro
+  // Roteamento crítico: envia o usuário para o cadastro com a chave da sessão
   const handleCreateAccount = () => {
-    // Passamos a sessionKey via state ou search params para o formulário de registro
     navigate({
       to: "/registro",
       search: { placement_session: result?.sessionKey },
@@ -94,7 +77,22 @@ function Triagem() {
     );
   }
 
-  // TELA DE RESULTADO (Final da Triagem)
+  // Se não houver perguntas cadastradas no banco
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F7F6] p-4">
+        <h2 className="text-2xl font-bold text-[#2D3748] mb-4">Nenhuma pergunta cadastrada</h2>
+        <p className="text-gray-600 mb-6">
+          Acesse o painel do Django Admin para cadastrar as perguntas da triagem.
+        </p>
+        <Button onClick={() => navigate({ to: "/" })} variant="outline">
+          Voltar ao Início
+        </Button>
+      </div>
+    );
+  }
+
+  // Tela Final (Resultado do Nivelamento)
   if (result) {
     return (
       <div className="min-h-screen bg-[#F4F7F6] flex flex-col items-center justify-center p-4">
@@ -115,7 +113,7 @@ function Triagem() {
     );
   }
 
-  // TELA DO QUESTIONÁRIO
+  // Tela das Perguntas
   const currentQuestion = questions[currentIndex];
 
   return (
@@ -131,11 +129,10 @@ function Triagem() {
               {currentQuestion.enunciado}
             </h2>
 
-            {/* Renderização condicional para perguntas que exigem VexFlow */}
-            {currentQuestion.tipo === "partitura" && (
+            {/* Renderiza o VexFlow apenas se o tipo for 'partitura' e houver dados */}
+            {currentQuestion.tipo === "partitura" && currentQuestion.dados_partitura && (
               <div className="flex justify-center items-center w-full my-6 overflow-hidden">
-                {/* O container deve garantir que a clave não seja cortada */}
-                {/* <Stave data={currentQuestion.dados_partitura} className="w-full max-w-sm mx-auto" /> */}
+                <Stave data={currentQuestion.dados_partitura} className="w-full max-w-sm mx-auto" />
               </div>
             )}
 
