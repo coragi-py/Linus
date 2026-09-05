@@ -1,7 +1,12 @@
+// Esse arquivo é responsável por renderizar a página de triagem, onde os usuários respondem a perguntas para determinar seu nível de habilidade musical.
+// Ele utiliza React, React Router e Axios para buscar perguntas da API e enviar respostas.
+// A interface é construída com componentes de UI personalizados e inclui feedback visual sobre o progresso do usuário e o resultado final da triagem.
+
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Check } from "lucide-react";
 import axios from "axios";
 import Stave from "@/components/Stave";
 
@@ -17,20 +22,35 @@ interface Question {
   dados_partitura?: any;
 }
 
+interface TriagemResult {
+  nivel: string;
+  sessionKey: string;
+  estatisticas: {
+    acertos: number;
+    total_questoes: number;
+    pontos: number;
+    pontos_maximos: number;
+  };
+  modulo_recomendado: {
+    titulo: string;
+    descricao: string;
+  };
+}
+
 function Triagem() {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<{ nivel: string; sessionKey: string } | null>(null);
+  const [result, setResult] = useState<TriagemResult | null>(null);
 
-  // Busca as perguntas cadastradas no painel admin do Django
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/v1/placement/questions/");
-        setQuestions(response.data);
+        // Verifica se a API retornou os dados de forma paginada ou direta
+        setQuestions(response.data.results || response.data);
       } catch (error) {
         console.error("Erro ao buscar perguntas da triagem:", error);
       } finally {
@@ -40,7 +60,6 @@ function Triagem() {
     fetchQuestions();
   }, []);
 
-  // Registra a resposta e avança ou finaliza a triagem
   const handleAnswer = async (optionId: string) => {
     const currentQ = questions[currentIndex];
     const newAnswers = { ...answers, [currentQ.id]: optionId };
@@ -50,7 +69,6 @@ function Triagem() {
       setCurrentIndex(currentIndex + 1);
     } else {
       try {
-        // Envia as respostas para o backend calcular o nível e gerar a sessão
         const response = await axios.post("http://127.0.0.1:8000/api/v1/placement/submit/", {
           respostas: newAnswers,
         });
@@ -61,7 +79,6 @@ function Triagem() {
     }
   };
 
-  // Roteamento crítico: envia o usuário para o cadastro com a chave da sessão
   const handleCreateAccount = () => {
     navigate({
       to: "/registro",
@@ -77,34 +94,48 @@ function Triagem() {
     );
   }
 
-  // Se não houver perguntas cadastradas no banco
   if (questions.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F7F6] p-4">
-        <h2 className="text-2xl font-bold text-[#2D3748] mb-4">Nenhuma pergunta cadastrada</h2>
-        <p className="text-gray-600 mb-6">
-          Acesse o painel do Django Admin para cadastrar as perguntas da triagem.
-        </p>
+        <h2 className="text-2xl font-bold text-[#2D3748] mb-4">Nenhuma pergunta ativa</h2>
         <Button onClick={() => navigate({ to: "/" })} variant="outline">
-          Voltar ao Início
+          Voltar
         </Button>
       </div>
     );
   }
 
-  // Tela Final (Resultado do Nivelamento)
+  // TELA DE RESULTADO (Design idêntico ao Mockup)
   if (result) {
     return (
       <div className="min-h-screen bg-[#F4F7F6] flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-lg shadow-lg border-0 rounded-lg text-center p-8">
-          <h2 className="text-3xl font-bold text-[#2D3748] mb-4">Triagem Concluída!</h2>
-          <p className="text-lg text-gray-600 mb-8">
-            Com base nas suas respostas, seu nível recomendado é:{" "}
-            <strong className="text-[#2B6CB0]">{result.nivel}</strong>.
+        <Card className="w-full max-w-xl shadow-sm border border-gray-100 rounded-2xl text-center p-8 bg-white">
+          {/* Ícone de Sucesso */}
+          <div className="w-16 h-16 bg-[#06D6A0] rounded-xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+            <Check className="w-10 h-10 text-[#1E2A38]" strokeWidth={3} />
+          </div>
+
+          <h2 className="text-3xl font-extrabold text-[#2D3748] mb-2">Seu nível: {result.nivel}</h2>
+
+          <p className="text-base text-gray-500 mb-8">
+            Você acertou {result.estatisticas.acertos} de {result.estatisticas.total_questoes}{" "}
+            questões.
           </p>
+
+          {/* Card de Recomendação do Módulo */}
+          <div className="bg-[#F8F9FA] border border-gray-200 rounded-xl p-6 text-left mb-8 shadow-inner">
+            <h4 className="text-[#2B6CB0] text-xs font-bold uppercase tracking-wider mb-2">
+              Comece por aqui
+            </h4>
+            <h3 className="text-xl font-bold text-[#2D3748] mb-1">
+              {result.modulo_recomendado.titulo}
+            </h3>
+            <p className="text-gray-500 text-sm">{result.modulo_recomendado.descricao}</p>
+          </div>
+
           <Button
             onClick={handleCreateAccount}
-            className="w-full rounded-lg bg-[#06D6A0] hover:bg-[#06D6A0]/90 text-[#2D3748] text-xl font-bold py-6"
+            className="w-full rounded-lg bg-[#2B6CB0] hover:bg-[#2B6CB0]/90 text-white text-lg font-bold py-6 shadow-md transition-transform hover:scale-[1.02]"
           >
             Criar conta agora
           </Button>
@@ -113,7 +144,7 @@ function Triagem() {
     );
   }
 
-  // Tela das Perguntas
+  // TELA DAS PERGUNTAS
   const currentQuestion = questions[currentIndex];
 
   return (
@@ -123,13 +154,12 @@ function Triagem() {
           Pergunta {currentIndex + 1} de {questions.length}
         </div>
 
-        <Card className="shadow-md border-0 rounded-lg p-6 md:p-10">
+        <Card className="shadow-md border-0 rounded-2xl p-6 md:p-10">
           <CardContent className="p-0">
             <h2 className="text-2xl font-bold text-[#2D3748] mb-8 text-center">
               {currentQuestion.enunciado}
             </h2>
 
-            {/* Renderiza o VexFlow apenas se o tipo for 'partitura' e houver dados */}
             {currentQuestion.tipo === "partitura" && currentQuestion.dados_partitura && (
               <div className="flex justify-center items-center w-full my-6 overflow-hidden">
                 <Stave data={currentQuestion.dados_partitura} className="w-full max-w-sm mx-auto" />
@@ -142,7 +172,7 @@ function Triagem() {
                   key={opcao.id}
                   variant="outline"
                   onClick={() => handleAnswer(opcao.id)}
-                  className="w-full justify-start text-left h-auto py-4 px-6 text-lg rounded-lg border-gray-300 hover:border-[#2B6CB0] hover:bg-[#2B6CB0]/5 whitespace-normal"
+                  className="w-full justify-start text-left h-auto py-4 px-6 text-lg rounded-xl border-gray-200 hover:border-[#2B6CB0] hover:bg-[#2B6CB0]/5 whitespace-normal text-gray-700"
                 >
                   {opcao.texto}
                 </Button>
