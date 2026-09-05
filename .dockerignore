@@ -1,0 +1,22 @@
+# Controle de versão
+.git/
+.gitignore
+.dockerignore
+
+# Ambientes Virtuais e Dependências
+venv/
+env/
+node_modules/
+
+# Caches e arquivos compilados
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+dist/
+build/
+
+# Variáveis de Ambiente e Segredos
+.env
+.env.local
