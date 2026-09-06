@@ -79,11 +79,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Linus — Teoria musical gamificada" },
+      { title: "Linus — Aprenda teoria musical na prática!" },
       {
         name: "description",
         content:
-          "Aprenda teoria musical com trilhas gamificadas, piano virtual e partitura dinâmica. Para todas as idades.",
+          "Explore partituras, escalas e modos gregos com exercícios interativos, piano virtual e feedback imediato.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
