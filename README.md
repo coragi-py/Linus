@@ -10,15 +10,15 @@ Este guia explica como preparar o ambiente local do projeto Linus, executar fron
 
 Instale as ferramentas abaixo antes de iniciar.
 
-| Ferramenta | Versão recomendada | Verificação |
-|---|---:|---|
-| Git | 2.40 ou superior | `git --version` |
-| Node.js | 20 LTS ou superior | `node --version` |
-| npm | acompanha o Node.js | `npm --version` |
-| Python | 3.11 ou superior | `python --version` ou `py --version` |
-| Docker Desktop | versão atual | `docker --version` |
-| Docker Compose | versão atual | `docker compose version` |
-| VS Code | recomendada | opcional |
+| Ferramenta     |  Versão recomendada | Verificação                          |
+| -------------- | ------------------: | ------------------------------------ |
+| Git            |    2.40 ou superior | `git --version`                      |
+| Node.js        |  20 LTS ou superior | `node --version`                     |
+| npm            | acompanha o Node.js | `npm --version`                      |
+| Python         |    3.11 ou superior | `python --version` ou `py --version` |
+| Docker Desktop |        versão atual | `docker --version`                   |
+| Docker Compose |        versão atual | `docker compose version`             |
+| VS Code        |         recomendada | opcional                             |
 
 No Windows, abra o Docker Desktop e aguarde até que ele esteja em execução antes de subir o banco de dados.
 
@@ -144,8 +144,8 @@ A configuração atual do Docker Compose utiliza o banco PostgreSQL com os segui
 Host: localhost
 Porta: 5432
 Banco: linus_db
-Usuário: linus_user
-Senha: linus_password
+Usuário: linus_db_admin
+Senha: Af2612!!!
 ```
 
 Essas credenciais são exclusivas do ambiente local e não devem ser usadas em produção.
@@ -221,6 +221,9 @@ DB_USER=linus_user
 DB_PASSWORD=linus_password
 DB_HOST=localhost
 DB_PORT=5432
+
+# URL de Conexão do Django (Usada pelo dj-database-url)
+DATABASE_URL=postgres://usuarioBancoAqui:SenhaBancoAqui@localhost:5432/linus_db
 
 GEMINI_API_KEY=
 ```
@@ -425,14 +428,17 @@ Modelo de descrição:
 
 ```md
 ## O que foi feito
-- 
+
+-
 
 ## Como testar
-1. 
-2. 
+
+1.
+2.
 
 ## Observações
-- 
+
+-
 ```
 
 ---
