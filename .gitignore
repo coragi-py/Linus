@@ -1,5 +1,6 @@
 # Ambientes e Dependências
 venv/
+.venv/
 env/
 node_modules/
 dist/
