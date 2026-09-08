@@ -6,7 +6,8 @@
 
 /*
  * Linus — Design System
- * Azul Melodia / Ouro Lira / Verde Notável / Nuvem Off-White / Grafite Suave
+ * Tema: Sinestesia Educacional
+ * Base: Branco e Cinza Neutro / Destaques: Azul Claro, Verde, Amarelo e Vermelho Vibrantes
  * Neumorphic, rounded, tactile.
  */
 
@@ -19,8 +20,8 @@
   --radius-3xl: 0.5rem;
   --radius-4xl: 0.5rem;
 
-  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
-  --font-sans: "Quicksand", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Pinisiart", "Nunito", system-ui, sans-serif;
+  --font-sans: "Serif", "Plus Jakarta Sans", system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -69,53 +70,60 @@
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.972 0.004 174);
-  --foreground: oklch(0.32 0.032 264);
-  --card: oklch(0.995 0.002 174);
-  --card-foreground: oklch(0.32 0.032 264);
-  --popover: oklch(0.995 0.002 174);
-  --popover-foreground: oklch(0.32 0.032 264);
+  
+  /* Base Neutra (Saturação 0) */
+  --background: oklch(0.99 0 0); /* Branco puro */
+  --foreground: oklch(0.20 0 0); /* Grafite escuro para leitura */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.20 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.20 0 0);
 
-  --primary: oklch(0.505 0.117 254);
-  --primary-foreground: oklch(0.99 0.005 240);
-  --primary-soft: oklch(0.92 0.03 254);
+  /* Azul Claro Vibrante (Ação Principal) */
+  --primary: oklch(0.65 0.16 250);
+  --primary-foreground: oklch(0.98 0 0);
+  --primary-soft: oklch(0.92 0.04 250);
 
-  --secondary: oklch(0.94 0.008 200);
-  --secondary-foreground: oklch(0.32 0.032 264);
+  /* Cinza Claro Neutro (Elementos Secundários) */
+  --secondary: oklch(0.95 0 0);
+  --secondary-foreground: oklch(0.20 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  --border: oklch(0.90 0 0);
+  --input: oklch(0.90 0 0);
 
-  --muted: oklch(0.94 0.008 200);
-  --muted-foreground: oklch(0.55 0.025 258);
+  /* Amarelo Vibrante (Atenção/Conquistas) */
+  --accent: oklch(0.88 0.18 90);
+  --accent-foreground: oklch(0.20 0 0);
+  --gold: oklch(0.85 0.18 85);
+  --gold-foreground: oklch(0.20 0 0);
 
-  --accent: oklch(0.93 0.045 168);
-  --accent-foreground: oklch(0.32 0.032 264);
+  /* Verde Vibrante (Sucesso/Acertos) */
+  --success: oklch(0.65 0.18 150);
+  --success-foreground: oklch(0.98 0 0);
 
-  --gold: oklch(0.816 0.163 79);
-  --gold-foreground: oklch(0.3 0.05 70);
+  /* Vermelho Vibrante (Erros/Destrutivo) */
+  --destructive: oklch(0.60 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
 
-  --success: oklch(0.786 0.157 168);
-  --success-foreground: oklch(0.26 0.05 168);
+  --ring: oklch(0.65 0.16 250);
 
-  --destructive: oklch(0.62 0.21 20);
-  --destructive-foreground: oklch(0.99 0.005 240);
+  /* Sistema de Cores Funcionais para as Notas (Chart Colors) */
+  --chart-1: oklch(0.65 0.16 250); /* Azul Claro */
+  --chart-2: oklch(0.65 0.18 150); /* Verde */
+  --chart-3: oklch(0.85 0.18 85);  /* Amarelo */
+  --chart-4: oklch(0.60 0.22 25);  /* Vermelho */
+  --chart-5: oklch(0.70 0.18 300); /* Roxo (Extra para modos/escalas) */
 
-  --border: oklch(0.9 0.008 200);
-  --input: oklch(0.9 0.008 200);
-  --ring: oklch(0.505 0.117 254);
-
-  --chart-1: oklch(0.505 0.117 254);
-  --chart-2: oklch(0.786 0.157 168);
-  --chart-3: oklch(0.816 0.163 79);
-  --chart-4: oklch(0.62 0.21 20);
-  --chart-5: oklch(0.55 0.025 258);
-
-  --sidebar: oklch(0.995 0.002 174);
-  --sidebar-foreground: oklch(0.32 0.032 264);
-  --sidebar-primary: oklch(0.505 0.117 254);
-  --sidebar-primary-foreground: oklch(0.99 0.005 240);
-  --sidebar-accent: oklch(0.94 0.008 200);
-  --sidebar-accent-foreground: oklch(0.32 0.032 264);
-  --sidebar-border: oklch(0.9 0.008 200);
-  --sidebar-ring: oklch(0.505 0.117 254);
+  /* Sidebar Neutra */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.20 0 0);
+  --sidebar-primary: oklch(0.65 0.16 250);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.95 0 0);
+  --sidebar-accent-foreground: oklch(0.20 0 0);
+  --sidebar-border: oklch(0.90 0 0);
+  --sidebar-ring: oklch(0.65 0.16 250);
 }
 
 @layer base {
