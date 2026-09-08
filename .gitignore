@@ -1,9 +1,12 @@
 # Ambientes e Dependências
 venv/
+.venv/
 env/
 node_modules/
 dist/
 build/
+backend/.venv/
+
 
 # Python & Django
 *.pyc

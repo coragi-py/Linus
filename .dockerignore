@@ -5,6 +5,7 @@
 
 # Ambientes Virtuais e Dependências
 venv/
+.venv/
 env/
 node_modules/
 
