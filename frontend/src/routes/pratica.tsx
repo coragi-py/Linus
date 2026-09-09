@@ -1,8 +1,10 @@
+//Correção do import Stave por Antonio em 08/09
+
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Eraser, Keyboard, Music2 } from "lucide-react";
 import { SectionTitle } from "@/components/AppShell";
-import { Stave } from "@/components/Stave";
+import  Stave  from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
 import { noteLabelPt } from "@/lib/music";
 

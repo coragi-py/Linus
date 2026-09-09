@@ -9,7 +9,7 @@ import { useLinus } from "@/context/LinusContext";
 export const Route = createFileRoute("/registro")({
   head: () => ({
     meta: [
-      { title: "Criar conta — Linus" },
+      { title: "Criar sua conta — Linus" },
       {
         name: "description",
         content:
@@ -95,7 +95,7 @@ function Registro() {
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           Ainda não fez a triagem?{" "}
-          <Link to="/triagem" className="focus-ring font-bold text-primary underline">
+          <Link to="/triagem" className="focus-ring font-bold text-accent hover:text-accent/80 underline">
             Descobrir meu nível
           </Link>
         </p>
