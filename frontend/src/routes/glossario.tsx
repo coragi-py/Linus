@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Search, EyeOff } from "lucide-react";
 import { SectionTitle } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
-import { GLOSSARY, type GlossaryCategory } from "@/data/glossary";
+//import { GLOSSARY, type GlossaryCategory } from "@/data/glossary";
 import { GlossaryDiagram } from "@/components/GlossaryDiagram";
 import { cn } from "@/lib/utils";
 
@@ -26,20 +26,47 @@ export const Route = createFileRoute("/glossario")({
   component: Dicionario,
 });
 
+type GlossaryCategory = "Pautas" | "Figuras" | "Acidentes";
+
+type GlossaryItem = {
+  id: string;
+  term: string;
+  definition: string;
+  diagram: string;
+  category: GlossaryCategory;
+};
+
 const CATEGORIAS: ("Todas" | GlossaryCategory)[] = ["Todas", "Pautas", "Figuras", "Acidentes"];
+
 
 function Dicionario() {
   const [busca, setBusca] = useState("");
   const [cat, setCat] = useState<(typeof CATEGORIAS)[number]>("Todas");
 
+  const [dadosGlossario, setDadosGlossario] = useState<GlossaryItem[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/v1/glossario/")
+      .then((resposta) => resposta.json())
+      .then((dados) => {
+        setDadosGlossario(dados);
+        setCarregando(false);
+      })
+      .catch((erro) => {
+        console.error("Erro ao carregar o glossário:", erro);
+        setCarregando(false);
+      });
+  }, []);
+
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return GLOSSARY.filter(
+    return dadosGlossario.filter(
       (t) =>
         (cat === "Todas" || t.category === cat) &&
         (q === "" || t.term.toLowerCase().includes(q) || t.definition.toLowerCase().includes(q)),
     );
-  }, [busca, cat]);
+  }, [busca, cat, dadosGlossario]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -83,7 +110,9 @@ function Dicionario() {
         </div>
       </div>
 
-      {resultados.length === 0 ? (
+      {carregando ? (
+        <p className="neu p-8 text-center text-muted-foreground"> Carregando termos musicais... </p>
+      ) : resultados.length === 0 ? (
         <p className="neu p-8 text-center text-muted-foreground">
           Nenhum termo encontrado para “{busca}”.
         </p>

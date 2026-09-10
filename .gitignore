@@ -5,6 +5,8 @@ env/
 node_modules/
 dist/
 build/
+backend/.venv/
+
 
 # Python & Django
 *.pyc
