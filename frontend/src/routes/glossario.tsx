@@ -38,7 +38,6 @@ type GlossaryItem = {
 
 const CATEGORIAS: ("Todas" | GlossaryCategory)[] = ["Todas", "Pautas", "Figuras", "Acidentes"];
 
-
 function Dicionario() {
   const [busca, setBusca] = useState("");
   const [cat, setCat] = useState<(typeof CATEGORIAS)[number]>("Todas");
@@ -83,7 +82,10 @@ function Dicionario() {
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
           <Input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -101,7 +103,9 @@ function Dicionario() {
               onClick={() => setCat(c)}
               className={cn(
                 "focus-ring rounded-xl px-3 py-2 text-sm font-bold transition-colors",
-                cat === c ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground shadow-neu-sm",
+                cat === c
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground shadow-neu-sm",
               )}
             >
               {c}
