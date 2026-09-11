@@ -1,13 +1,22 @@
 # Esse arquivo contém a lógica de negócio para a triagem de usuários, incluindo a obtenção das perguntas, processamento das respostas e atribuição de nível com base nas respostas fornecidas.
+# Adicionado PerguntaTriagemViewSet para permitir operações CRUD nas perguntas da triagem, facilitando a administração do conteúdo da triagem.
 
 import uuid
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from .models import PerguntaTriagem, OpcaoTriagem, SessaoTriagem
-from .serializers import PerguntaTriagemSerializer
+from .serializers import PerguntaTriagemSerializer, PerguntaTriagemAdminSerializer
+
+
+#ViewSet para o CRUD de Admin da Triagem
+class PerguntaTriagemAdminViewSet(viewsets.ModelViewSet):
+    queryset = PerguntaTriagem.objects.all().order_by('ordem')
+    serializer_class = PerguntaTriagemSerializer
+    permission_classes = []  # Apenas admin de conteudo pode acessar (Alterar após desenvolver autenticação e autorização)
+
 
 # Classe responsável por lidar com as requisições da API de triagem.
 class TriagemAPIView(APIView):

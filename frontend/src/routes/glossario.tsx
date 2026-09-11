@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Search, EyeOff } from "lucide-react";
 import { SectionTitle } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
-//import { GLOSSARY, type GlossaryCategory } from "@/data/glossary";
 import { GlossaryDiagram } from "@/components/GlossaryDiagram";
 import { cn } from "@/lib/utils";
 
@@ -26,17 +25,15 @@ export const Route = createFileRoute("/glossario")({
   component: Dicionario,
 });
 
-type GlossaryCategory = "Pautas" | "Figuras" | "Acidentes";
-
 type GlossaryItem = {
   id: string;
   term: string;
   definition: string;
   diagram: string;
-  category: GlossaryCategory;
+  category: string;
 };
 
-const CATEGORIAS: ("Todas" | GlossaryCategory)[] = ["Todas", "Pautas", "Figuras", "Acidentes"];
+const CATEGORIAS = ["Todas", "Pautas", "Figuras", "Acidentes"] as const;
 
 function Dicionario() {
   const [busca, setBusca] = useState("");
@@ -46,10 +43,18 @@ function Dicionario() {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/glossario/")
+    fetch("http://127.0.0.1:8000/api/v1/glossary/")
       .then((resposta) => resposta.json())
       .then((dados) => {
-        setDadosGlossario(dados);
+        const lista = Array.isArray(dados) ? dados : dados.results || [];
+        const normalizado: GlossaryItem[] = lista.map((item: any) => ({
+          id: item.id,
+          term: item.term || item.termo || "",
+          definition: item.definition || item.definicao || "",
+          diagram: item.diagram || item.figura_svg || "",
+          category: item.category || item.categoria || "",
+        }));
+        setDadosGlossario(normalizado);
         setCarregando(false);
       })
       .catch((erro) => {
@@ -60,11 +65,27 @@ function Dicionario() {
 
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return dadosGlossario.filter(
-      (t) =>
-        (cat === "Todas" || t.category === cat) &&
-        (q === "" || t.term.toLowerCase().includes(q) || t.definition.toLowerCase().includes(q)),
-    );
+
+    return dadosGlossario.filter((t) => {
+      const termoCat = t.category.toLowerCase();
+
+      // Mapeamento flexível com os formatos gravados no banco
+      const categoriaValida =
+        cat === "Todas" ||
+        (cat === "Pautas" && (termoCat.includes("pauta") || termoCat.includes("clave"))) ||
+        (cat === "Figuras" &&
+          (termoCat.includes("figura") ||
+            termoCat.includes("nota") ||
+            termoCat.includes("compasso") ||
+            termoCat.includes("pausa"))) ||
+        (cat === "Acidentes" && termoCat.includes("acidente")) ||
+        termoCat.includes(cat.toLowerCase());
+
+      const buscaValida =
+        q === "" || t.term.toLowerCase().includes(q) || t.definition.toLowerCase().includes(q);
+
+      return categoriaValida && buscaValida;
+    });
   }, [busca, cat, dadosGlossario]);
 
   return (
@@ -94,7 +115,11 @@ function Dicionario() {
             className="rounded-lg pl-10"
           />
         </div>
-        <div className="flex gap-2" role="group" aria-label="Filtrar por categoria">
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          role="group"
+          aria-label="Filtrar por categoria"
+        >
           {CATEGORIAS.map((c) => (
             <button
               key={c}
@@ -102,7 +127,7 @@ function Dicionario() {
               aria-pressed={cat === c}
               onClick={() => setCat(c)}
               className={cn(
-                "focus-ring rounded-xl px-3 py-2 text-sm font-bold transition-colors",
+                "focus-ring shrink-0 rounded-xl px-3 py-2 text-sm font-bold transition-colors",
                 cat === c
                   ? "bg-primary text-primary-foreground"
                   : "bg-card text-muted-foreground shadow-neu-sm",
@@ -124,8 +149,15 @@ function Dicionario() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {resultados.map((t) => (
             <article key={t.id} className="neu flex flex-col p-5">
-              <div className="neu-inset mb-4 p-3">
-                <GlossaryDiagram diagram={t.diagram} />
+              <div className="neu-inset mb-4 flex min-h-24 items-center justify-center p-3">
+                {t.diagram?.trim().startsWith("<svg") ? (
+                  <div
+                    className="size-full flex items-center justify-center [&>svg]:size-full [&>svg]:max-h-20"
+                    dangerouslySetInnerHTML={{ __html: t.diagram }}
+                  />
+                ) : (
+                  <GlossaryDiagram diagram={t.diagram} />
+                )}
               </div>
               <p className="text-xs font-bold uppercase tracking-wide text-primary">{t.category}</p>
               <h2 className="mt-1 font-display text-lg">{t.term}</h2>
