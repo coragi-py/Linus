@@ -117,10 +117,10 @@ function Triagem() {
 
           <h2 className="text-3xl font-extrabold text-[#2D3748] mb-2">Seu nível: {result.nivel}</h2>
 
-          <p className="text-base text-gray-500 mb-8">
+          {/* <p className="text-base text-gray-500 mb-8">
             Você acertou {result.estatisticas.acertos} de {result.estatisticas.total_questoes}{" "}
             questões.
-          </p>
+          </p> */}
 
           {/* Card de Recomendação do Módulo */}
           <div className="bg-[#F8F9FA] border border-gray-200 rounded-xl p-6 text-left mb-8 shadow-inner">
