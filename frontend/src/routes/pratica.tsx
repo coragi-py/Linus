@@ -1,8 +1,9 @@
+// Corrigido o import do componente Stave, que estava com erro de importação. Por Antonio 11/09
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Eraser, Keyboard, Music2 } from "lucide-react";
 import { SectionTitle } from "@/components/AppShell";
-import { Stave } from "@/components/Stave";
+import Stave from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
 import { noteLabelPt } from "@/lib/music";
 
@@ -40,10 +41,36 @@ function Pratica() {
 
       <div className="neu p-5 sm:p-7">
         <div className="neu-inset mb-5 flex flex-col items-center gap-3 p-5">
-          <div className="flex items-center gap-2 self-end" role="group" aria-label="Escolher clave">
+          <div
+            className="flex items-center gap-2 self-end"
+            role="group"
+            aria-label="Escolher clave"
+          >
             <Music2 className="size-4 text-primary" aria-hidden />
-            <button type="button" onClick={() => setClef("treble")} aria-pressed={clef === "treble"} className={clef === "treble" ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground" : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"}>Clave de Sol</button>
-            <button type="button" onClick={() => setClef("bass")} aria-pressed={clef === "bass"} className={clef === "bass" ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground" : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"}>Clave de Fá</button>
+            <button
+              type="button"
+              onClick={() => setClef("treble")}
+              aria-pressed={clef === "treble"}
+              className={
+                clef === "treble"
+                  ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
+                  : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"
+              }
+            >
+              Clave de Sol
+            </button>
+            <button
+              type="button"
+              onClick={() => setClef("bass")}
+              aria-pressed={clef === "bass"}
+              className={
+                clef === "bass"
+                  ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
+                  : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"
+              }
+            >
+              Clave de Fá
+            </button>
           </div>
           <Stave notes={current} width={560} height={190} scale={1.45} clef={clef} />
           <p className="text-sm font-bold text-primary" aria-live="polite">
@@ -81,7 +108,9 @@ function Pratica() {
       <section className="mt-8">
         <h2 className="font-display text-xl">Últimas notas tocadas</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          {history.length === 0 && <p className="text-sm text-muted-foreground">Nada ainda por aqui.</p>}
+          {history.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nada ainda por aqui.</p>
+          )}
           {history.map((n, i) => (
             <span
               key={`${n}-${i}`}
