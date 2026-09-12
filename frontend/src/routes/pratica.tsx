@@ -143,10 +143,14 @@ function Pratica() {
     }
   };
 
-  // Função para reproduzir garantindo exclusividade (interrompe a anterior)
+  // Função para reproduzir, plotar as notas na partitura e garantir exclusividade
   const playSavedMusic = async (musica: MusicaSalva) => {
     if (!musica.notas || musica.notas.length === 0) return;
     
+    // Atualiza o histórico para plotar as notas da música selecionada na partitura
+    setHistory(musica.notas);
+    setCurrent([]);
+
     // 1. Interrompe e limpa qualquer áudio/timeout anterior em execução
     if (activeSynthRef.current) {
       activeSynthRef.current.dispose();
