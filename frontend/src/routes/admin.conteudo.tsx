@@ -1,3 +1,4 @@
+// Adicionado o botão de edição de verbete no card do glossário, que carrega os dados no formulário para edição. Por Fabio 11/09
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { createFileRoute } from "@tanstack/react-router";
@@ -69,12 +70,60 @@ export default function AdminConteudoPage() {
   });
 
   // Formulário do Glossário
+  const [editingTermoId, setEditingTermoId] = useState<string | null>(null);
   const [novoTermo, setNovoTermo] = useState({
     termo: "",
     categoria: CATEGORIAS_GLOSSARIO[0],
     definicao: "",
     figura_svg: "",
   });
+
+  // Limpa o formulário e cancela o modo de edição
+  const resetTermoForm = () => {
+    setEditingTermoId(null);
+    setNovoTermo({
+      termo: "",
+      categoria: CATEGORIAS_GLOSSARIO[0],
+      definicao: "",
+      figura_svg: "",
+    });
+  };
+
+  // Carrega os dados do card selecionado para o formulário
+  const handleEditarTermoClick = (g: any) => {
+    setEditingTermoId(g.id);
+    setNovoTermo({
+      termo: g.termo || g.term || "",
+      categoria: g.categoria || g.category || CATEGORIAS_GLOSSARIO[0],
+      definicao: g.definicao || g.definition || "",
+      figura_svg: g.figura_svg || g.diagram || "",
+    });
+    window.scrollTo({ top: 200, behavior: "smooth" });
+  };
+
+  // Salva o verbete (Criação via POST ou Edição via PUT)
+  const handleSalvarTermo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        termo: novoTermo.termo,
+        categoria: novoTermo.categoria,
+        definicao: novoTermo.definicao,
+        figura_svg: novoTermo.figura_svg,
+      };
+
+      if (editingTermoId) {
+        await axios.put(`${API_BASE}/glossary/termos/${editingTermoId}/`, payload);
+      } else {
+        await axios.post(`${API_BASE}/glossary/termos/`, payload);
+      }
+
+      resetTermoForm();
+      fetchData();
+    } catch (err) {
+      alert("Erro ao salvar verbete no glossário.");
+    }
+  };
 
   // Formulário da Triagem (Criação e Edição)
   const [editingPerguntaId, setEditingPerguntaId] = useState<string | null>(null);
@@ -786,12 +835,35 @@ export default function AdminConteudoPage() {
 
         {/* ================= TAB 4: GLOSSÁRIO ================= */}
         <TabsContent value="glossario" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Adicionar Termo ao Glossário</CardTitle>
+          <Card className="border-blue-100 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                {editingTermoId ? (
+                  <>
+                    <Edit className="w-5 h-5 text-blue-600" />
+                    Alterar Termo do Glossário
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 text-blue-600" />
+                    Adicionar Termo ao Glossário
+                  </>
+                )}
+              </CardTitle>
+              {editingTermoId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetTermoForm}
+                  className="flex items-center gap-1 text-gray-500"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Cancelar Edição
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCriarTermo} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <form onSubmit={handleSalvarTermo} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
                   placeholder="Termo / Conceito"
                   value={novoTermo.termo}
@@ -813,18 +885,42 @@ export default function AdminConteudoPage() {
                   ))}
                 </select>
 
-                <Button type="submit" className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Salvar Verbete
-                </Button>
+                <div className="flex gap-2">
+                  {editingTermoId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetTermoForm}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-[#2B6CB0] hover:bg-[#2B6CB0]/90 text-white flex items-center justify-center gap-2"
+                  >
+                    {editingTermoId ? (
+                      <>
+                        <Edit className="w-4 h-4" /> Atualizar Verbete
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" /> Salvar Verbete
+                      </>
+                    )}
+                  </Button>
+                </div>
 
                 {/* CAMPO FIGURA SVG */}
                 <div className="md:col-span-3">
                   <label className="text-xs font-semibold text-gray-600 block mb-1">
-                    Figura SVG (Código vetorial SVG bruto):
+                    Figura SVG (Identificador textual como "treble", "bass" ou código vetorial
+                    &lt;svg&gt;):
                   </label>
                   <Textarea
                     rows={3}
-                    placeholder='<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">...</svg>'
+                    placeholder='Ex: treble, bass, ou <svg viewBox="0 0 100 100">...</svg>'
                     value={novoTermo.figura_svg}
                     onChange={(e) => setNovoTermo({ ...novoTermo, figura_svg: e.target.value })}
                     className="font-mono text-xs"
@@ -852,6 +948,7 @@ export default function AdminConteudoPage() {
             </CardContent>
           </Card>
 
+          {/* LISTAGEM DOS TERMOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {glossario.map((g) => {
               const termo = g.termo || g.term;
@@ -875,7 +972,7 @@ export default function AdminConteudoPage() {
                       <p className="text-sm text-gray-600">{definicao}</p>
                     </div>
 
-                    {/* Suporte a SVG bruto ou identificador textual (stave, treble, etc.) */}
+                    {/* Suporte a SVG ou identificador */}
                     {figura && (
                       <div className="w-16 h-16 p-1.5 border rounded-lg bg-gray-50 shrink-0 flex items-center justify-center text-gray-800 shadow-inner">
                         {figura.trim().startsWith("<svg") ? (
@@ -892,14 +989,22 @@ export default function AdminConteudoPage() {
                     )}
                   </div>
 
-                  <div className="flex justify-end pt-2 border-t">
+                  <div className="flex justify-end items-center gap-2 pt-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditarTermoClick(g)}
+                      className="text-blue-600 hover:bg-blue-50 text-xs flex items-center gap-1"
+                    >
+                      <Edit className="w-3.5 h-3.5" /> Editar
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleExcluirTermo(g.id)}
-                      className="text-red-500 hover:bg-red-50 text-xs"
+                      className="text-red-500 hover:bg-red-50 text-xs flex items-center gap-1"
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir Verbete
+                      <Trash2 className="w-3.5 h-3.5" /> Excluir
                     </Button>
                   </div>
                 </div>
