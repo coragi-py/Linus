@@ -1,4 +1,5 @@
 // Adicionado a historico e plotado as notas para visualização por Antonio 10/09
+// Adicionado a visualização das notas das musicas gravas na partitura para visualização, por 12/09
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Eraser, Keyboard, Music2, Play, Save, X, ListMusic, Trash2 } from "lucide-react";
