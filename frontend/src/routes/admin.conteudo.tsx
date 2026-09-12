@@ -136,7 +136,9 @@ export default function AdminConteudoPage() {
       '{\n  "clef": "treble",\n  "timeSignature": "4/4",\n  "notes": "C4/w",\n  "width": 300,\n  "height": 130\n}',
     opcoes: [
       { texto: "", peso_perfil: 1 },
-      { texto: "", peso_perfil: 2 },
+      { texto: "", peso_perfil: 1 },
+      { texto: "", peso_perfil: 1 },
+      { texto: "", peso_perfil: 1 },
     ] as OpcaoForm[],
   });
 
@@ -261,7 +263,7 @@ export default function AdminConteudoPage() {
     }
   };
 
-  // ================= TRIAGEM (CRUD COMPLETO) =================
+  // ================= TRIAGEM =================
   const resetPerguntaForm = () => {
     setEditingPerguntaId(null);
     setPerguntaForm({
@@ -273,7 +275,9 @@ export default function AdminConteudoPage() {
         '{\n  "clef": "treble",\n  "timeSignature": "4/4",\n  "notes": "C4/w",\n  "width": 300,\n  "height": 130\n}',
       opcoes: [
         { texto: "", peso_perfil: 1 },
-        { texto: "", peso_perfil: 2 },
+        { texto: "", peso_perfil: 1 },
+        { texto: "", peso_perfil: 1 },
+        { texto: "", peso_perfil: 1 },
       ],
     });
   };
@@ -291,7 +295,9 @@ export default function AdminConteudoPage() {
           ? p.opcoes.map((op: any) => ({ id: op.id, texto: op.texto, peso_perfil: op.peso_perfil }))
           : [
               { texto: "", peso_perfil: 1 },
-              { texto: "", peso_perfil: 2 },
+              { texto: "", peso_perfil: 1 },
+              { texto: "", peso_perfil: 1 },
+              { texto: "", peso_perfil: 1 },
             ],
     });
     window.scrollTo({ top: 200, behavior: "smooth" });
@@ -552,7 +558,7 @@ export default function AdminConteudoPage() {
           </div>
         </TabsContent>
 
-        {/* ================= TAB 3: TRIAGEM (CRUD COMPLETO) ================= */}
+        {/* ================= TAB 3: TRIAGEM ================= */}
         <TabsContent value="triagem" className="space-y-6">
           <Card className="border-blue-100 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
