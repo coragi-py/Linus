@@ -3,10 +3,10 @@
 
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import TriagemAPIView, PerguntaTriagemAdminViewSet
+from .views import TriagemAPIView, PerguntaTriagemViewSet
 
 router = DefaultRouter()
-router.register(r'admin/questoes', PerguntaTriagemAdminViewSet, basename='admin-questoes')
+router.register(r'admin/questoes', PerguntaTriagemViewSet, basename='admin-questoes')
 
 urlpatterns = [
     path('questions/', TriagemAPIView.as_view(), name='triagem-questions'),

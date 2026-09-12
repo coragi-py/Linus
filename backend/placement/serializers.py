@@ -5,18 +5,15 @@ from django.db import transaction
 from .models import PerguntaTriagem, OpcaoTriagem
 
 class OpcaoTriagemSerializer(serializers.ModelSerializer):
+    # read_only=True garante que o DRF não exija id no POST nem tente validá-lo como campo obrigatório
+    id = serializers.UUIDField(read_only=True)
+
     class Meta:
         model = OpcaoTriagem
-        fields = ['id', 'texto']
+        fields = ['id', 'texto', 'peso_perfil']
 
 class PerguntaTriagemSerializer(serializers.ModelSerializer):
-    opcoes = OpcaoTriagemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = PerguntaTriagem
-        fields = ['id', 'enunciado', 'tipo', 'dados_partitura', 'ordem', 'ativo', 'opcoes']
-class PerguntaTriagemAdminSerializer(serializers.ModelSerializer):
-    opcoes = OpcaoTriagemSerializer(many=True, read_only=True)
+    opcoes = OpcaoTriagemSerializer(many=True, required=False)
 
     class Meta:
         model = PerguntaTriagem
@@ -27,7 +24,6 @@ class PerguntaTriagemAdminSerializer(serializers.ModelSerializer):
         opcoes_data = validated_data.pop('opcoes', [])
         pergunta = PerguntaTriagem.objects.create(**validated_data)
         for opcao in opcoes_data:
-            opcao.pop('id', None)
             OpcaoTriagem.objects.create(pergunta=pergunta, **opcao)
         return pergunta
 
@@ -39,9 +35,11 @@ class PerguntaTriagemAdminSerializer(serializers.ModelSerializer):
         instance.save()
 
         if opcoes_data is not None:
-            # Substitui as alternativas pelas novas enviadas
+            # Limpa alternativas antigas e persiste as novas enviadas pelo admin
             instance.opcoes.all().delete()
             for opcao in opcoes_data:
-                opcao.pop('id', None)
                 OpcaoTriagem.objects.create(pergunta=instance, **opcao)
         return instance
+
+# Alias para compatibilidade
+PerguntaTriagemAdminSerializer = PerguntaTriagemSerializer

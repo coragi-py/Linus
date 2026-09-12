@@ -8,22 +8,20 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from .models import PerguntaTriagem, OpcaoTriagem, SessaoTriagem
-from .serializers import PerguntaTriagemSerializer, PerguntaTriagemAdminSerializer
+from .serializers import PerguntaTriagemSerializer
 
-
-#ViewSet para o CRUD de Admin da Triagem
-class PerguntaTriagemAdminViewSet(viewsets.ModelViewSet):
+# ViewSet para o CRUD de Perguntas da Triagem
+class PerguntaTriagemViewSet(viewsets.ModelViewSet):
     queryset = PerguntaTriagem.objects.all().order_by('ordem')
     serializer_class = PerguntaTriagemSerializer
-    permission_classes = []  # Apenas admin de conteudo pode acessar (Alterar após desenvolver autenticação e autorização)
+    permission_classes = []
+    pagination_class = None
 
-
-# Classe responsável por lidar com as requisições da API de triagem.
 class TriagemAPIView(APIView):
-    permission_classes = [] # Rota pública, não exige token JWT
+    permission_classes = [] 
 
     def get(self, request):
-        perguntas = PerguntaTriagem.objects.filter(ativo=True)
+        perguntas = PerguntaTriagem.objects.filter(ativo=True).order_by('ordem')
         serializer = PerguntaTriagemSerializer(perguntas, many=True)
         return Response(serializer.data)
 
@@ -52,15 +50,13 @@ class TriagemAPIView(APIView):
                         acertos += 1
                 except OpcaoTriagem.DoesNotExist:
                     continue
-        
-        # Cálculo da média ponderada das respostas
+
         media = pontuacao_total / total_respondido if total_respondido > 0 else 1
         
-        # Mapeamento do módulo recomendado
-        if media <= 1.4:
+        if media <= 1.5:
             nivel = 'Iniciante'
             modulo = {"titulo": "Unidade 1: Leitura de Partituras", "descricao": "Pauta, clave de Sol, notas e figuras de duração."}
-        elif media <= 2.0:
+        elif media <= 2.5:
             nivel = 'Intermediário'
             modulo = {"titulo": "Unidade 2: Intervalos e Escalas", "descricao": "Estrutura de tons, semitons e formação de escalas maiores."}
         else:
