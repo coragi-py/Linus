@@ -11,5 +11,5 @@ urlpatterns = [
     path('api/v1/placement/', include('placement.urls')),
     path('api/v1/learning/', include('learning.urls')),
     path('api/v1/glossary/', include('glossary.urls')), 
-    path('api/v1/music', include('music.urls')),
+    path('api/v1/music/', include('music.urls')),
 ]

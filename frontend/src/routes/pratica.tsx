@@ -1,4 +1,4 @@
-//Adicionado a historico e plotado as notas para visualização por Antonio 10/09
+// Adicionado a historico e plotado as notas para visualização por Antonio 10/09
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Eraser, Keyboard, Music2, Save } from "lucide-react";
@@ -6,7 +6,6 @@ import { SectionTitle } from "@/components/AppShell";
 import Stave from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
 import { noteLabelPt } from "@/lib/music";
-
 
 export const Route = createFileRoute("/pratica")({
   head: () => ({
@@ -27,24 +26,20 @@ export const Route = createFileRoute("/pratica")({
   component: Pratica,
 });
 
-
 function Pratica() {
   const [current, setCurrent] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [clef, setClef] = useState<"treble" | "bass">("treble");
   const [isSaving, setIsSaving] = useState(false);
 
-
   // Armazenando as ultimos 8 notas
   const recentNotes = history.slice(-8);
-
 
   // Vexflow
   // Cada nota armazenada vira colcheia (/8).
   // Na ausencia de nota é preenchdio o restante com pausas (/8/r) para fechar o compasso 4/4.
   // Se nenhuma nota foi tocada ainda, exibe uma pausa de compasso inteiro (/w/r).
-  const notas=
-  // aqui dentro modifica as notas, duração etc.
+  const notas =
     recentNotes.length === 0
       ? "B4/w/r"
       : [
@@ -52,21 +47,42 @@ function Pratica() {
           ...Array(8 - recentNotes.length).fill("B4/8/r"),
         ].join(", ");
 
-
+  // Fiunção para enviar a gravação para o Django na porta 8000
   const handleSaveToDatabase = async () => {
     if (history.length === 0) return;
-
 
     setIsSaving(true);
     console.log("Enviando para o backend a sequência de notas:", history);
 
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/music/musicas/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome_musica: `Gravação Prática Livre - ${new Date().toLocaleDateString()}`,
+          notas: history, // Envia o array de notas gravadas respeitando o limite de 128
+        }),
+      });
 
-    setTimeout(() => {
-      alert("Integração com backend virá aqui!");
+      if (!response.ok) {
+        throw new Error("Erro ao salvar a gravação no backend.");
+      }
+
+      const data = await response.json();
+      console.log("Salvo com sucesso:", data);
+      alert("Gravação salva com sucesso na tabela TB_MUSICA!"); //Caso precise mudar o texto  de salvamento com sucesso.
+      
+      // Aqui o histórico é limpo após salvar com sucesso
+      setHistory([]);
+    } catch (error) {
+      console.error("Erro na requisição:", error);
+      alert("Não foi possível salvar a gravação. Verifique se o backend está rodando na porta 8000.");
+    } finally {
       setIsSaving(false);
-    }, 1000);
+    }
   };
-
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
@@ -75,7 +91,6 @@ function Pratica() {
         title="Piano virtual e partitura ao vivo"
         description="Duas oitavas de C3 a B4, síntese polifônica de baixa latência e a nota aparecendo na pauta no instante em que você toca."
       />
-
 
       <div className="neu p-5 sm:p-7">
         <div className="neu-inset mb-5 flex flex-col items-center gap-3 p-5">
@@ -108,7 +123,6 @@ function Pratica() {
             </button>
           </div>
 
-
           {/* Partitura exibindo o histórico deslizante de até 8 notas */}
           <Stave
             data={{
@@ -120,7 +134,6 @@ function Pratica() {
             }}
           />
 
-
           <p className="text-sm font-bold text-primary" aria-live="polite">
             {current.length > 0
               ? current.map((n) => `${noteLabelPt(n)} ${n.slice(-1)}`).join(" · ")
@@ -128,14 +141,12 @@ function Pratica() {
           </p>
         </div>
 
-
         <VirtualPiano
           onNoteOn={(note) => {
             setCurrent([note]);
             setHistory((h) => [...h, note]);
           }}
         />
-
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -155,11 +166,9 @@ function Pratica() {
         </div>
       </div>
 
-
       <section className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl">Últimas notas tocadas ({history.length})</h2>
-
 
           <button
             onClick={handleSaveToDatabase}
@@ -170,7 +179,6 @@ function Pratica() {
             {isSaving ? "Salvando..." : "Salvar Gravação"}
           </button>
         </div>
-
 
         <div className="mt-4 flex max-h-48 flex-wrap gap-2 overflow-y-auto p-2">
           {history.length === 0 && <p className="text-sm text-muted-foreground">Nada ainda por aqui.</p>}
@@ -187,4 +195,3 @@ function Pratica() {
     </div>
   );
 }
-
