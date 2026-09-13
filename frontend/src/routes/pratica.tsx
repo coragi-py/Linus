@@ -77,10 +77,9 @@ function Pratica() {
   const notas =
     recentNotes.length === 0
       ? "B4/w/r"
-      : [
-          ...recentNotes.map((n) => `${n}/8`),
-          ...Array(8 - recentNotes.length).fill("B4/8/r"),
-        ].join(", ");
+      : [...recentNotes.map((n) => `${n}/8`), ...Array(8 - recentNotes.length).fill("B4/8/r")].join(
+          ", ",
+        );
 
   const handleOpenSaveModal = () => {
     if (history.length === 0) return;
@@ -111,7 +110,7 @@ function Pratica() {
         throw new Error("Erro ao salvar no backend.");
       }
 
-      alert("Gravação salva com sucesso na tabela TB_MUSICA!");
+      alert("Gravação salva com sucesso!");
       setHistory([]);
       setIsModalOpen(false);
       fetchSavedMusics();
@@ -147,7 +146,7 @@ function Pratica() {
   // Função para reproduzir, plotar as notas na partitura e garantir exclusividade
   const playSavedMusic = async (musica: MusicaSalva) => {
     if (!musica.notas || musica.notas.length === 0) return;
-    
+
     // Atualiza o histórico para plotar as notas da música selecionada na partitura
     setHistory(musica.notas);
     setCurrent([]);
@@ -162,10 +161,10 @@ function Pratica() {
 
     setIsPlayingId(musica.id_musica);
     await Tone.start();
-    
+
     const synth = new Tone.PolySynth(Tone.Synth).toDestination();
     activeSynthRef.current = synth;
-    
+
     const now = Tone.now();
     musica.notas.forEach((note, index) => {
       synth.triggerAttackRelease(note, "8n", now + index * 0.3);
@@ -191,11 +190,14 @@ function Pratica() {
       />
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
-        
         <div className="lg:col-span-2">
           <div className="neu p-5 sm:p-7">
             <div className="neu-inset mb-5 flex flex-col items-center gap-3 p-5">
-              <div className="flex items-center gap-2 self-end" role="group" aria-label="Escolher clave">
+              <div
+                className="flex items-center gap-2 self-end"
+                role="group"
+                aria-label="Escolher clave"
+              >
                 <Music2 className="size-4 text-primary" aria-hidden />
                 <button
                   type="button"
@@ -280,7 +282,9 @@ function Pratica() {
             </div>
 
             <div className="mt-4 flex max-h-48 flex-wrap gap-2 overflow-y-auto p-2">
-              {history.length === 0 && <p className="text-sm text-muted-foreground">Nada ainda por aqui.</p>}
+              {history.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nada ainda por aqui.</p>
+              )}
               {history.map((n, i) => (
                 <span
                   key={`${n}-${i}`}
@@ -312,11 +316,15 @@ function Pratica() {
                     className="neu-inset rounded-xl p-3.5 flex items-center justify-between gap-3 bg-background/50 transition-all hover:border-primary/50"
                   >
                     <div className="overflow-hidden">
-                      <h4 className="text-sm font-bold text-foreground truncate" title={musica.nome_musica}>
+                      <h4
+                        className="text-sm font-bold text-foreground truncate"
+                        title={musica.nome_musica}
+                      >
                         {musica.nome_musica}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {musica.notas?.length || 0} notas · {new Date(musica.data_criacao).toLocaleDateString()}
+                        {musica.notas?.length || 0} notas ·{" "}
+                        {new Date(musica.data_criacao).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -327,7 +335,9 @@ function Pratica() {
                         title="Ouvir música"
                         className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground shadow-sm hover:opacity-90"
                       >
-                        <Play className={`size-3.5 ${isPlayingId === musica.id_musica ? "animate-pulse" : ""}`} />
+                        <Play
+                          className={`size-3.5 ${isPlayingId === musica.id_musica ? "animate-pulse" : ""}`}
+                        />
                       </button>
 
                       <button
@@ -345,7 +355,6 @@ function Pratica() {
             </div>
           </div>
         </div>
-
       </div>
 
       {isModalOpen && (
