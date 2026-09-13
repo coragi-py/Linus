@@ -61,7 +61,8 @@ INSTALLED_APPS = [
     "glossary",
     "learning",
     "placement",
-    "progress",  
+    "progress",
+    "music",  
 ]
 
 MIDDLEWARE = [
