@@ -1,6 +1,7 @@
-import { useState } from "react";
+// Adicionado bullets de auditoria em relação aos logins. Ainda não possui autorização de exibir os dados pois falta aplicação do accounts. Por Anny, em 17/09.
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Users, ShieldCheck, Activity, TrendingUp } from "lucide-react";
+import { Users, ShieldCheck, Activity, TrendingUp, UserPlus, LogIn, AlertTriangle } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -34,6 +35,19 @@ export const Route = createFileRoute("/admin/sistema")({
   component: AdminSistema,
 });
 
+/* interface igual ao JSON que o django retorna */
+type AuditData = {
+  periodo_analise: string;
+  metricas_gerais: {
+    novos_cadastros: number;
+    logins_com_sucesso: number;
+    logins_com_falha: number;
+  };
+  seguranca: {
+    alerta_ips_suspeitos: { ip_origem: string; tentativas_falhas: number }[];
+  };
+};
+
 type MockUser = { id: number; nome: string; email: string; role: Role; ativo: boolean };
 
 const USUARIOS_INICIAIS: MockUser[] = [
@@ -57,9 +71,30 @@ const ATIVIDADE = [
 
 function AdminSistema() {
   const [usuarios, setUsuarios] = useState(USUARIOS_INICIAIS);
+  const [auditData, setAuditData] = useState<AuditData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAuditData = async () => {
+      try {
+        // TODO: Quando o 'accounts' estiver pronto, injetar o header: { Authorization: `Bearer ${token}` }
+        const response = await fetch('/api/v1/audit/analise/');
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAuditData(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar métricas de auditoria:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAuditData();
+  }, []);
 
   const ativos = usuarios.filter((u) => u.ativo).length;
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <SectionTitle
@@ -67,6 +102,54 @@ function AdminSistema() {
         title="Visão geral da plataforma"
         description="Métricas simuladas de uso e controle de contas, papéis e status."
       />
+
+  {/* MÉTRICAS REAIS DA API DE AUDITORIA */}
+      <div className="grid gap-5 sm:grid-cols-4">
+        <Metric 
+          icon={UserPlus} 
+          label="Novos Cadastros (24h)" 
+          value={isLoading ? "..." : String(auditData?.metricas_gerais.novos_cadastros || 0)} 
+        />
+        <Metric 
+          icon={LogIn} 
+          label="Logins Sucesso (24h)" 
+          value={isLoading ? "..." : String(auditData?.metricas_gerais.logins_com_sucesso || 0)} 
+        />
+        <Metric 
+          icon={AlertTriangle} 
+          label="Falhas de Login (24h)" 
+          value={isLoading ? "..." : String(auditData?.metricas_gerais.logins_com_falha || 0)}
+          highlight={Number(auditData?.metricas_gerais.logins_com_falha) > 5} 
+        />
+        <Metric 
+          icon={Users} 
+          label="Total (Mock)" 
+          value={String(usuarios.length * 214)} 
+        />
+      </div>
+
+      {/* ALERTA DE IPS SUSPEITOS (Só aparece se houver ameaça) */}
+      {!isLoading && auditData?.seguranca.alerta_ips_suspeitos && auditData.seguranca.alerta_ips_suspeitos.length > 0 && (
+        <section className="neu mt-8 border-l-4 border-l-destructive p-6">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="size-5" />
+            <h2 className="font-display text-lg">Alerta de Segurança: Possível Força Bruta</h2>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            IPs com mais de 5 falhas de autenticação nas últimas 24 horas.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {auditData.seguranca.alerta_ips_suspeitos.map((ip, idx) => (
+              <span key={idx} className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive">
+                {ip.ip_origem}
+                <span className="rounded-full bg-destructive/20 px-2 py-0.5 text-xs">
+                  {ip.tentativas_falhas} falhas
+                </span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}  
 
       <div className="grid gap-5 sm:grid-cols-3">
         <Metric icon={Users} label="Usuários cadastrados" value={String(usuarios.length * 214)} />
@@ -190,16 +273,29 @@ function AdminSistema() {
   );
 }
 
-function Metric({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function Metric({ 
+  icon: Icon, 
+  label, 
+  value, 
+  highlight = false 
+}: { 
+  icon: any; 
+  label: string; 
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="neu p-5">
+    <div className={cn("neu p-5 transition-colors", highlight && "border-destructive bg-destructive/5")}>
       <div className="flex items-center gap-3">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
+        <span className={cn(
+          "flex size-10 items-center justify-center rounded-xl",
+          highlight ? "bg-destructive/20 text-destructive" : "bg-primary-soft text-primary"
+        )}>
           <Icon className="size-5" aria-hidden />
         </span>
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="font-display text-2xl">{value}</p>
+          <p className={cn("font-display text-2xl", highlight && "text-destructive")}>{value}</p>
         </div>
       </div>
     </div>
