@@ -1,3 +1,4 @@
+# Adicionando a biblioteca Crum como middleware que retorna o IP
 """
 Django settings for core project.
 
@@ -72,6 +73,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "crum.CurrentRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

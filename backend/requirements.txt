@@ -8,6 +8,10 @@ django-filter>=24.0
 djangorestframework-simplejwt>=5.3.0
 google-auth>=2.28.0
 
+# Auditoria e Segurança
+django-ipware>=7.0.0
+django-crum>=0.7.9
+
 # Persistência de dados
 psycopg2-binary>=2.9.9
 dj-database-url>=2.1.0
