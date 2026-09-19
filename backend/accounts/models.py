@@ -17,6 +17,7 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', CustomUser.Role.ADMIN_SISTEMA)
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser deve ter is_staff=True.')
@@ -25,9 +26,22 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    class Role(models.TextChoices):
+        USUARIO = 'usuario', 'Usuário'
+        ADMIN_CONTEUDO = 'admin-conteudo', 'Admin Conteúdo'
+        ADMIN_SISTEMA = 'admin-sistema', 'Admin Sistema'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=255, db_index=True)
+    
+    # Dados do Usuário
+    ano_nascimento = models.IntegerField(null=True, blank=True)
+    
+    # RBAC (Role-Based Access Control)
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.USUARIO)
+    
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -50,8 +64,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
+    class Meta:
+        db_table = 'TB_USUARIO'
+        verbose_name = 'Usuário'
+        verbose_name_plural = 'Usuários'
+
     def __str__(self):
         return self.email
+
 
 class TwoFactorAuthToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -62,8 +82,12 @@ class TwoFactorAuthToken(models.Model):
     attempts = models.IntegerField(default=0)
     is_used = models.BooleanField(default=False)
 
+    class Meta:
+        db_table = 'TB_TOKEN_2FA'
+
     def is_valid(self):
         return not self.is_used and self.attempts < 5 and timezone.now() < self.expires_at
+
 
 class PasswordResetToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -72,6 +96,9 @@ class PasswordResetToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'TB_TOKEN_RECUPERACAO'
 
     def is_valid(self):
         return not self.is_used and timezone.now() < self.expires_at

@@ -5,6 +5,7 @@ from django.conf import settings
 
 class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Sempre usar settings.AUTH_USER_MODEL em ForeignKey para usuários
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
     action = models.CharField(max_length=255)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -13,6 +14,7 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        db_table = 'TB_AUDITORIA'
         ordering = ['-timestamp']
 
     def save(self, *args, **kwargs):
