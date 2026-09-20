@@ -2,6 +2,7 @@
 # Adicionando rota glossary, por Anny em 07/09
 # Adicionando rota learning, por Fabio em 10/09
 # Adicionando rota music, por Antonio 12/09
+# Adicionando a roda ai_gateway, por Antonio 18/09
 
 from django.contrib import admin
 from django.urls import path, include
@@ -12,4 +13,5 @@ urlpatterns = [
     path('api/v1/learning/', include('learning.urls')),
     path('api/v1/glossary/', include('glossary.urls')), 
     path('api/v1/music/', include('music.urls')),
+    path('api/v1/ai/', include('ai_gateway.urls')),
 ]
