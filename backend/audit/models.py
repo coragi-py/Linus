@@ -5,7 +5,6 @@ from django.conf import settings
 
 class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # Sempre usar settings.AUTH_USER_MODEL em ForeignKey para usuários
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
     action = models.CharField(max_length=255)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -18,11 +17,13 @@ class AuditLog(models.Model):
         ordering = ['-timestamp']
 
     def save(self, *args, **kwargs):
-        if self.pk is not None:
+        # Proteção contra UPDATE: verifica se o objeto já existe no banco
+        if not self._state.adding:
             raise PermissionDenied("Registros de auditoria são imutáveis e não podem ser alterados.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
+        # Proteção contra DELETE
         raise PermissionDenied("Registros de auditoria são imutáveis e não podem ser excluídos.")
 
     def __str__(self):

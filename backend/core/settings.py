@@ -141,10 +141,18 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle"
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "10/min",
-        "user": "100/min"
-    }
+        "user": "100/min",
+        "auth_attempt": "5/min",
+        "password_reset": "3/min"
+    },
+    "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }
 
 SIMPLE_JWT = {
