@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import update_last_login
 from rest_framework.throttling import ScopedRateThrottle
 from django.conf import settings
 import uuid
@@ -74,6 +75,7 @@ class LoginView(APIView):
                 
                 tokens = get_tokens_for_user(user)
                 AuditService.log_event(request, user, "USER_LOGGED_IN")
+                update_last_login(None, user)
                 return Response(tokens, status=status.HTTP_200_OK)
             
             AuditService.log_event(request, None, "FAILED_LOGIN_ATTEMPT", {"email": email})
