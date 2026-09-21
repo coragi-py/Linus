@@ -168,7 +168,7 @@ class GoogleAuthView(APIView):
 
             except ValueError:
                 AuditService.log_event(request, None, "FAILED_GOOGLE_LOGIN_ATTEMPT")
-                return Response({"error": "Token do Google inválido, forjado ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"error": "Token do Google inválido ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
                 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
