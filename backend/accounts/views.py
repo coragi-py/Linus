@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
 from django.conf import settings
-
+import uuid
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
