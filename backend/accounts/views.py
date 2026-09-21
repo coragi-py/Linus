@@ -236,3 +236,82 @@ class LogoutView(APIView):
             return Response({"message": "Sessão encerrada com sucesso."}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"error": "Token inválido ou já invalidado."}, status=status.HTTP_400_BAD_REQUEST)
+
+class UserPrivacyDataView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def get(self, request):
+        user = request.user
+        
+        # Estruturação padronizada dos dados do titular (Art. 18, II da LGPD)
+        privacy_data = {
+            "id": str(user.id),
+            "email": user.email,
+            "ano_nascimento": user.ano_nascimento,
+            "role": user.role,
+            "is_2fa_enabled": user.is_2fa_enabled,
+            "termos_de_uso": {
+                "aceitos": user.terms_accepted,
+                "versao": user.terms_version,
+                "data_aceite": user.terms_accepted_at,
+                "ip_consentimento": user.consent_ip
+            },
+            "metadados": {
+                "criado_em": user.created_at,
+                "atualizado_em": user.updated_at
+            }
+        }
+        
+        AuditService.log_event(request, user, "LGPD_DATA_EXPORTED")
+        return Response(privacy_data, status=status.HTTP_200_OK)
+
+class RevokeConsentView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def post(self, request):
+        user = request.user
+        
+        # Suspensão do consentimento e inativação de acessos
+        user.terms_accepted = False
+        user.is_active = False 
+        user.save(update_fields=['terms_accepted', 'is_active'])
+        
+        AuditService.log_event(request, user, "LGPD_CONSENT_REVOKED")
+        return Response({
+            "message": "Consentimento revogado. Seu acesso à plataforma foi suspenso."
+        }, status=status.HTTP_200_OK)
+
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def delete(self, request):
+        user = request.user
+        
+        # Anonimização Criptográfica (Art. 18, IV e VI da LGPD)
+        # Os dados pessoais são destruídos, mas o ID é mantido para não quebrar a 
+        # integridade relacional dos logs de auditoria e métricas gamificadas.
+        fake_email = f"anon_{uuid.uuid4().hex[:12]}@deleted.local"
+        
+        user.email = fake_email
+        user.set_unusable_password()
+        user.ano_nascimento = None
+        user.is_active = False
+        user.is_2fa_enabled = False
+        user.terms_accepted = False
+        user.terms_version = None
+        user.consent_ip = None
+        user.anonymized_at = timezone.now()
+        
+        user.save()
+        
+        AuditService.log_event(request, user, "LGPD_ACCOUNT_ANONYMIZED")
+        
+        return Response({
+            "message": "Sua conta e dados pessoais foram excluídos e anonimizados com sucesso."
+        }, status=status.HTTP_200_OK)
