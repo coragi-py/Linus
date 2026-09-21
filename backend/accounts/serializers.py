@@ -41,6 +41,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)
-    terms_accepted = serializers.BooleanField(required=True, default=False)
+    terms_accepted = serializers.BooleanField(required=True)
     terms_version = serializers.CharField(max_length=50, required=True, allow_blank=True)
-    ano_nascimento = serializers.DateField(required=False, allow_null=True)
+    ano_nascimento = serializers.IntegerField(required=False, allow_null=True)
