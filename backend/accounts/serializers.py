@@ -21,7 +21,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         email = value.lower().strip()
         if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError("Este e-mail já está registrado em nossa plataforma.")
+            raise serializers.ValidationError("Este e-mail já está registrado.")
         return email
 
 class LoginSerializer(serializers.Serializer):
@@ -38,3 +38,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=True)
+    terms_accepted = serializers.BooleanField(required=True, default=False)
+    terms_version = serializers.CharField(max_length=50, required=True, allow_blank=True)
+    ano_nascimento = serializers.DateField(required=False, allow_null=True)

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Carrega variáveis do .env no ambiente local (sobrescrito pelas vars reais no deploy)
+# Carrega variáveis do .env no ambiente local
 env_path = BASE_DIR / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -177,6 +177,9 @@ EMAIL_HOST_USER = os.environ.get("BREVO_SMTP_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
+
+# Integração Google OAuth 2.0
+GOOGLE_OAUTH2_CLIENT_ID = os.environ.get("GOOGLE_OAUTH2_CLIENT_ID", "")
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
