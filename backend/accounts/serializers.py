@@ -39,7 +39,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
-class GoogleOAuthSerializer(serializers.Serializer):
+class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)
     terms_accepted = serializers.BooleanField(required=True, default=False)
     terms_version = serializers.CharField(max_length=50, required=True, allow_blank=True)

@@ -330,7 +330,7 @@ npm run dev
 O Vite exibirá a URL local no terminal. Normalmente:
 
 ```text
-http://localhost:5173/
+http://localhost:8000/
 ```
 
 Para abrir o servidor automaticamente no navegador:

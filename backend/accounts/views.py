@@ -7,10 +7,15 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework.throttling import ScopedRateThrottle
+from django.conf import settings
+
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from accounts.serializers import (
     RegisterSerializer, LoginSerializer, Verify2FASerializer,
-    PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    GoogleAuthSerializer
 )
 from accounts.services.security_service import SecurityService
 from accounts.services.email_service import EmailService
@@ -100,6 +105,73 @@ class Verify2FAView(APIView):
             return Response({"error": "Código inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class GoogleAuthView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        if serializer.is_valid():
+            token_str = serializer.validated_data['id_token']
+            try:
+                # Validação criptográfica do token na biblioteca oficial do Google
+                idinfo = id_token.verify_oauth2_token(
+                    token_str, google_requests.Request(), settings.GOOGLE_OAUTH2_CLIENT_ID
+                )
+                
+                email = idinfo.get('email')
+                if not idinfo.get('email_verified'):
+                    return Response({"error": "O e-mail da conta Google não foi verificado."}, status=status.HTTP_400_BAD_REQUEST)
+
+                user = User.objects.filter(email=email).first()
+
+                if user:
+                    # Fluxo de Login Existente via Google
+                    if user.is_2fa_enabled:
+                        otp = SecurityService.create_2fa_token(user)
+                        EmailService.send_2fa_email(user.email, otp)
+                        AuditService.log_event(request, user, "GOOGLE_LOGIN_2FA_SENT")
+                        return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
+
+                    tokens = get_tokens_for_user(user)
+                    AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
+                    return Response(tokens, status=status.HTTP_200_OK)
+                
+                else:
+                    # Fluxo de Registro via Google (Idempotente)
+                    terms_accepted = serializer.validated_data.get('terms_accepted')
+                    terms_version = serializer.validated_data.get('terms_version')
+                    ano_nascimento = serializer.validated_data.get('ano_nascimento')
+
+                    if not terms_accepted:
+                        return Response({
+                            "status": "registration_required",
+                            "message": "Usuário não encontrado. Aceite os termos de uso para concluir o cadastro."
+                        }, status=status.HTTP_403_FORBIDDEN)
+
+                    user = User.objects.create_user(
+                        email=email,
+                        ano_nascimento=ano_nascimento,
+                        terms_accepted=terms_accepted,
+                        terms_version=terms_version,
+                        terms_accepted_at=timezone.now(),
+                        consent_ip=AuditService.get_client_ip(request)
+                    )
+                    # Contas Google não utilizam senha local
+                    user.set_unusable_password()
+                    user.save()
+
+                    AuditService.log_event(request, user, "USER_REGISTERED_GOOGLE")
+                    tokens = get_tokens_for_user(user)
+                    return Response(tokens, status=status.HTTP_201_CREATED)
+
+            except ValueError:
+                AuditService.log_event(request, None, "FAILED_GOOGLE_LOGIN_ATTEMPT")
+                return Response({"error": "Token do Google inválido, forjado ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
+                
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
@@ -112,13 +184,13 @@ class PasswordResetRequestView(APIView):
             try:
                 user = User.objects.get(email=email)
                 token = SecurityService.create_password_reset_token(user)
-                reset_link = f"{request.scheme}://localhost:5173/recuperar-senha?token={token}&email={email}"
+                reset_link = f"{request.scheme}://localhost:8000/password-reset?token={token}&email={email}"
                 EmailService.send_password_reset_email(user.email, reset_link)
                 AuditService.log_event(request, user, "PASSWORD_RESET_REQUESTED")
             except User.DoesNotExist:
                 pass # Prevenção de enumeração
             
-            return Response({"message": "Se o e-mail existir na base, enviaremos um link de recuperação."}, status=status.HTTP_200_OK)
+            return Response({"message": "Se o e-mail estiver cadastrado, enviaremos um link de recuperação."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetConfirmView(APIView):
