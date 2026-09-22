@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as GlossarioRouteImport } from './routes/glossario'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PraticaRouteImport } from './routes/pratica'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as TriagemRouteImport } from './routes/triagem'
 import { Route as TrilhaRouteImport } from './routes/trilha'
@@ -38,6 +39,11 @@ const PainelRoute = PainelRouteImport.update({
 const PraticaRoute = PraticaRouteImport.update({
   id: '/pratica',
   path: '/pratica',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegistroRoute = RegistroRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/glossario': typeof GlossarioRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/registro': typeof RegistroRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/glossario': typeof GlossarioRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/registro': typeof RegistroRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/glossario': typeof GlossarioRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/registro': typeof RegistroRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/painel'
     | '/pratica'
+    | '/privacidade'
     | '/registro'
     | '/triagem'
     | '/trilha'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/painel'
     | '/pratica'
+    | '/privacidade'
     | '/registro'
     | '/triagem'
     | '/trilha'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/painel'
     | '/pratica'
+    | '/privacidade'
     | '/registro'
     | '/triagem'
     | '/trilha'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   GlossarioRoute: typeof GlossarioRoute
   PainelRoute: typeof PainelRoute
   PraticaRoute: typeof PraticaRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   RegistroRoute: typeof RegistroRoute
   TriagemRoute: typeof TriagemRoute
   TrilhaRoute: typeof TrilhaRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/pratica'
       fullPath: '/pratica'
       preLoaderRoute: typeof PraticaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/registro': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   GlossarioRoute: GlossarioRoute,
   PainelRoute: PainelRoute,
   PraticaRoute: PraticaRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   RegistroRoute: RegistroRoute,
   TriagemRoute: TriagemRoute,
   TrilhaRoute: TrilhaRoute,
@@ -250,13 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

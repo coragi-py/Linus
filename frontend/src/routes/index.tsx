@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-// Importa o piano virtual gerado pelo Lovable para a demonstração
 import { VirtualPiano } from "@/components/VirtualPiano";
 
 export const Route = createFileRoute("/")({

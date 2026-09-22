@@ -69,7 +69,7 @@ class TriagemAPIView(APIView):
             respostas=respostas,
             nivel_atribuido=nivel,
             status='concluida',
-            expires_at=timezone.now() + timedelta(hours=2)
+            expires_at=timezone.now() + timedelta(minutes=30)
         )
 
         return Response({

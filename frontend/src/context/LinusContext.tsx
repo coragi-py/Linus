@@ -7,20 +7,25 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { jwtDecode } from "jwt-decode";
 import { ALL_LESSONS, RECOMMENDED_UNIT, type Placement } from "@/data/curriculum";
 
-export type Role = "estudante" | "conteudo" | "sistema";
+// Padrão de RBAC correspondente ao CustomUser no backend Django
+export type Role = "usuario" | "admin-conteudo" | "admin-sistema" | null;
 
-export const ROLE_LABEL: Record<Role, string> = {
-  estudante: "Estudante",
-  conteudo: "Administrador de Conteúdo",
-  sistema: "Administrador de Sistemas",
+export const ROLE_LABEL: Record<Exclude<Role, null>, string> = {
+  usuario: "Usuário Estudante",
+  "admin-conteudo": "Administrador de Conteúdo",
+  "admin-sistema": "Administrador de Sistemas",
 };
 
 export type LinusState = {
-  name: string;
+  // Autenticação
+  isAuthenticated: boolean;
+  accessToken: string | null;
   role: Role;
-  loggedIn: boolean;
+  name: string;
+  // Gamificação e Progresso
   placement: Placement | null;
   placementDone: boolean;
   streak: number;
@@ -30,12 +35,14 @@ export type LinusState = {
   errorsByTopic: Record<string, { erros: number; total: number }>;
 };
 
-const STORAGE_KEY = "linus.state.v1";
+// Nova chave para invalidar caches legados e forçar sincronização
+const STORAGE_KEY = "linus.state.v2";
 
 const INITIAL: LinusState = {
+  isAuthenticated: false,
+  accessToken: null,
+  role: null,
   name: "Aluno Linus",
-  role: "estudante",
-  loggedIn: false,
   placement: null,
   placementDone: false,
   streak: 3,
@@ -53,9 +60,9 @@ const INITIAL: LinusState = {
 type Ctx = {
   state: LinusState;
   ready: boolean;
-  login: (name: string) => void;
+  login: (access: string, refresh: string) => void;
   logout: () => void;
-  setRole: (role: Role) => void;
+  getAccessToken: () => string | null;
   finishPlacement: (placement: Placement) => void;
   completeLesson: (lessonId: string) => void;
   registerAnswer: (topic: string, correct: boolean) => void;
@@ -74,20 +81,52 @@ export function LinusProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LinusState>(INITIAL);
   const [ready, setReady] = useState(false);
 
+  // Inicialização: Lê progresso local e valida o token JWT de forma assíncrona
   useEffect(() => {
+    let loadedState = { ...INITIAL };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState({ ...INITIAL, ...(JSON.parse(raw) as Partial<LinusState>) });
+      if (raw) {
+        loadedState = { ...loadedState, ...(JSON.parse(raw) as Partial<LinusState>) };
+      }
     } catch {
       /* ignora dados corrompidos */
     }
+
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        if (decoded.exp * 1000 > Date.now()) {
+          loadedState.isAuthenticated = true;
+          loadedState.role = decoded.role;
+          loadedState.accessToken = token;
+        } else {
+          // Token expirado, faz limpeza preventiva
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          loadedState.isAuthenticated = false;
+          loadedState.role = null;
+          loadedState.accessToken = null;
+        }
+      } catch {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
+    } else {
+      loadedState.isAuthenticated = false;
+    }
+
+    setState(loadedState);
     setReady(true);
   }, []);
 
+  // Persistência contínua do estado local (excluindo os tokens)
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const stateToSave = { ...state, accessToken: null };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } catch {
       /* armazenamento indisponível */
     }
@@ -109,9 +148,27 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     return {
       state,
       ready,
-      login: (name) => update({ name: name || "Aluno Linus", loggedIn: true }),
-      logout: () => update({ loggedIn: false }),
-      setRole: (role) => update({ role }),
+      // Novo método de login: recebe e gere credenciais JWT do DRF
+      login: (access: string, refresh: string) => {
+        localStorage.setItem("access_token", access);
+        localStorage.setItem("refresh_token", refresh);
+        const decoded: any = jwtDecode(access);
+        update({
+          isAuthenticated: true,
+          role: decoded.role,
+          accessToken: access,
+        });
+      },
+      // Novo método de logout: destrói a sessão e redireciona
+      logout: () => {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        update({ isAuthenticated: false, role: null, accessToken: null });
+        window.location.href = "/";
+      },
+      getAccessToken: () => state.accessToken,
+
+      // Funções de Gamificação e Aprendizado preservadas
       finishPlacement: (placement) => update({ placement, placementDone: true }),
       completeLesson: (lessonId) =>
         setState((s) => ({
@@ -139,7 +196,13 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       refillHearts: () => update({ hearts: 5 }),
       awardBadge: (badge) =>
         setState((s) => (s.badges.includes(badge) ? s : { ...s, badges: [...s.badges, badge] })),
-      resetProgress: () => setState({ ...INITIAL, loggedIn: state.loggedIn, name: state.name }),
+      resetProgress: () =>
+        setState({
+          ...INITIAL,
+          isAuthenticated: state.isAuthenticated,
+          role: state.role,
+          accessToken: state.accessToken,
+        }),
       recommendedUnitId: state.placement ? RECOMMENDED_UNIT[state.placement] : "u1",
       progressPercent: Math.round((state.completedLessons.length / ALL_LESSONS.length) * 100),
       weakestTopic: weakest,

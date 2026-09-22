@@ -4,12 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Linus — Design System
- * Azul Melodia / Ouro Lira / Verde Notável / Nuvem Off-White / Grafite Suave
- * Neumorphic, rounded, tactile.
- */
-
 @theme inline {
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
