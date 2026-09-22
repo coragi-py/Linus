@@ -138,6 +138,7 @@ class GoogleAuthView(APIView):
 
                     tokens = get_tokens_for_user(user)
                     AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
+                    update_last_login(None, user)
                     return Response(tokens, status=status.HTTP_200_OK)
                 
                 else:
