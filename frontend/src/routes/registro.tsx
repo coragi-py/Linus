@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "sonner";
-import { Lock, Mail, User, Calendar, ShieldCheck, Music } from "lucide-react";
+import { Lock, Mail, User, Calendar, ShieldCheck, Music, Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/registro")({
   component: RegistroComponent,
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/registro")({
 const currentYear = new Date().getFullYear();
 const minBirthYear = currentYear - 12;
 
-// Blacklist de nomes impróprios
+// Blacklist de nomes impróprios (sincronizada com o backend)
 const blacklistNicknames = [
   "admin",
   "administrador",
@@ -33,7 +33,6 @@ const validarNomeApropriado = (nome: string) => {
   return !blacklistNicknames.some((palavra) => nomeLower.includes(palavra));
 };
 
-// Regras comuns exigidas pela LGPD em ambos os fluxos
 const regrasBase = {
   nome: z
     .string()
@@ -52,17 +51,30 @@ const regrasBase = {
   }),
 };
 
-// Schema para o cadastro manual (Exige email e senha)
-const manualSchema = z.object({
-  email: z.string().email("E-mail inválido"),
-  senha: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-  ...regrasBase,
-});
+// Schema para o cadastro manual (Exige email, senha forte e confirmação)
+const manualSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    senha: z
+      .string()
+      .min(8, "A senha deve ter pelo menos 8 caracteres")
+      .regex(/[a-z]/, "A senha deve conter pelo menos uma letra minúscula")
+      .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula")
+      .regex(/[0-9]/, "A senha deve conter pelo menos um número")
+      .regex(/[\W_]/, "A senha deve conter pelo menos um caractere especial"),
+    confirmaSenha: z.string().min(1, "Confirme sua senha"),
+    ...regrasBase,
+  })
+  .refine((data) => data.senha === data.confirmaSenha, {
+    message: "As senhas não coincidem",
+    path: ["confirmaSenha"],
+  });
 
-// Schema para o fluxo Google (Torna email e senha opcionais, mas EXIGE o nome)
+// Schema para o fluxo Google
 const googleSchema = z.object({
   email: z.string().optional(),
   senha: z.string().optional(),
+  confirmaSenha: z.string().optional(),
   ...regrasBase,
 });
 
@@ -74,27 +86,29 @@ function RegistroComponent() {
   const [fluxoGooglePendente, setFluxoGooglePendente] = useState(false);
   const [googleIdTokenTemp, setGoogleIdTokenTemp] = useState<string | null>(null);
 
+  // Estados para visibilidade das senhas
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmaSenha, setMostrarConfirmaSenha] = useState(false);
+
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegistroFormValues>({
-    // Alterna o schema dinamicamente com base no fluxo atual
     resolver: zodResolver(fluxoGooglePendente ? googleSchema : manualSchema),
+    mode: "onChange", // Dispara a validação a cada nova tecla digitada
     defaultValues: {
       aceiteTermos: false,
     },
   });
 
-  // Handler para liberação do checkbox dos Termos de Uso (Art. 8º LGPD)
   const handleLerTermos = (e: React.MouseEvent) => {
     e.preventDefault();
     setTermosLidos(true);
     toast.info("Termos de Uso visualizados. O aceite foi desbloqueado.");
   };
 
-  // Tratamento do Google OAuth com Fluxo Invertido
   const handleGoogleSuccess = async (credentialResponse: any) => {
     const idToken = credentialResponse.credential;
 
@@ -112,7 +126,6 @@ function RegistroComponent() {
       if (response.status === 403) {
         const errData = await response.json();
         if (errData.status === "registration_required") {
-          // FLUXO INVERTIDO: Retém o token e pede o resto dos dados
           setGoogleIdTokenTemp(idToken);
           setFluxoGooglePendente(true);
           toast.warning(
@@ -133,11 +146,9 @@ function RegistroComponent() {
     }
   };
 
-  // Submissão do Formulário (Manual ou Conclusão do Google)
   const onSubmit = async (data: RegistroFormValues) => {
     try {
       if (fluxoGooglePendente && googleIdTokenTemp) {
-        // Rota de criação via Google OAuth
         const payloadGoogle = {
           id_token: googleIdTokenTemp,
           name: data.nome,
@@ -158,11 +169,10 @@ function RegistroComponent() {
         }
 
         const result = await response.json();
-        localStorage.setItem("access_token", result.access); // O GoogleAuthView já retorna o JWT
+        localStorage.setItem("access_token", result.access);
         toast.success("Cadastro via Google realizado com sucesso!");
         navigate({ to: "/painel" });
       } else {
-        // Rota de criação Manual
         const payload = {
           nome: data.nome,
           email: data.email,
@@ -181,11 +191,9 @@ function RegistroComponent() {
         if (!response.ok) {
           let errorMessage = "Erro ao realizar cadastro.";
           try {
-            // Tenta ler como JSON (funciona em 400 Bad Request)
             const errData = await response.json();
             errorMessage = errData.detail || errData.error || errData.email?.[0] || errorMessage;
           } catch {
-            // Se quebrar ao ler (HTML 500 ou 404), cai aqui
             errorMessage = "Erro interno do servidor. Tente novamente mais tarde.";
           }
           throw new Error(errorMessage);
@@ -255,6 +263,7 @@ function RegistroComponent() {
             </div>
             {errors.nome && <p className="mt-1 text-xs text-destructive">{errors.nome.message}</p>}
           </div>
+
           {!fluxoGooglePendente && (
             <>
               <div>
@@ -282,14 +291,52 @@ function RegistroComponent() {
                 <div className="relative mt-1">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <input
-                    type="password"
+                    type={mostrarSenha ? "text" : "password"}
                     {...register("senha")}
-                    className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-lg border border-input bg-background pl-10 pr-10 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha(!mostrarSenha)}
+                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 {errors.senha && (
                   <p className="mt-1 text-xs text-destructive">{errors.senha.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-muted-foreground">
+                  Confirmar Senha
+                </label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type={mostrarConfirmaSenha ? "text" : "password"}
+                    {...register("confirmaSenha")}
+                    className="w-full rounded-lg border border-input bg-background pl-10 pr-10 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarConfirmaSenha(!mostrarConfirmaSenha)}
+                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {mostrarConfirmaSenha ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmaSenha && (
+                  <p className="mt-1 text-xs text-destructive">{errors.confirmaSenha.message}</p>
                 )}
               </div>
             </>
