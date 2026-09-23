@@ -6,6 +6,7 @@ import { z } from "zod";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "sonner";
 import { Lock, Mail, User, Calendar, ShieldCheck, Music, Eye, EyeOff } from "lucide-react";
+import { blacklistNicknames } from "@/lib/blacklist";
 
 export const Route = createFileRoute("/registro")({
   component: RegistroComponent,
@@ -14,18 +15,6 @@ export const Route = createFileRoute("/registro")({
 // Validação com Zod conforme as regras de negócio da LGPD e PFC
 const currentYear = new Date().getFullYear();
 const minBirthYear = currentYear - 12;
-
-// Blacklist de nomes impróprios (sincronizada com o backend)
-const blacklistNicknames = [
-  "admin",
-  "administrador",
-  "root",
-  "suporte",
-  "linus",
-  "sistema",
-  "palavrao1",
-  "palavrao2",
-];
 
 // Função de validação customizada
 const validarNomeApropriado = (nome: string) => {
