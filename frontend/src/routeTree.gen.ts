@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GlossarioRouteImport } from './routes/glossario'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PraticaRouteImport } from './routes/pratica'
 import { Route as RegistroRouteImport } from './routes/registro'
@@ -28,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
 const GlossarioRoute = GlossarioRouteImport.update({
   id: '/glossario',
   path: '/glossario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PainelRoute = PainelRouteImport.update({
@@ -74,6 +80,7 @@ const LicaoLessonIdRoute = LicaoLessonIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
     | '/pratica'
     | '/registro'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
     | '/pratica'
     | '/registro'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
     | '/pratica'
     | '/registro'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GlossarioRoute: typeof GlossarioRoute
+  LoginRoute: typeof LoginRoute
   PainelRoute: typeof PainelRoute
   PraticaRoute: typeof PraticaRoute
   RegistroRoute: typeof RegistroRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/glossario'
       fullPath: '/glossario'
       preLoaderRoute: typeof GlossarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/painel': {
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GlossarioRoute: GlossarioRoute,
+  LoginRoute: LoginRoute,
   PainelRoute: PainelRoute,
   PraticaRoute: PraticaRoute,
   RegistroRoute: RegistroRoute,
