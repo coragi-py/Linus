@@ -164,7 +164,7 @@ function RegistroComponent() {
       } else {
         // Rota de criação Manual
         const payload = {
-          name: data.nome,
+          nome: data.nome,
           email: data.email,
           password: data.senha,
           ano_nascimento: data.anoNascimento,
@@ -179,8 +179,15 @@ function RegistroComponent() {
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          const errorMessage = errData.detail || errData.email?.[0] || "Erro ao realizar cadastro.";
+          let errorMessage = "Erro ao realizar cadastro.";
+          try {
+            // Tenta ler como JSON (funciona em 400 Bad Request)
+            const errData = await response.json();
+            errorMessage = errData.detail || errData.error || errData.email?.[0] || errorMessage;
+          } catch {
+            // Se quebrar ao ler (HTML 500 ou 404), cai aqui
+            errorMessage = "Erro interno do servidor. Tente novamente mais tarde.";
+          }
           throw new Error(errorMessage);
         }
 

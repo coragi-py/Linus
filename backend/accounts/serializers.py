@@ -11,7 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('email', 'password', 'ano_nascimento', 'terms_accepted', 'terms_version')
+        fields = ('nome', 'email', 'password', 'ano_nascimento', 'terms_accepted', 'terms_version')
         
     def validate_terms_accepted(self, value):
         if not value:

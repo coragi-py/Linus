@@ -41,17 +41,21 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            user = User.objects.create_user(
-                email=serializer.validated_data['email'],
-                password=serializer.validated_data['password'],
-                ano_nascimento=serializer.validated_data.get('ano_nascimento'),
-                terms_accepted=serializer.validated_data['terms_accepted'],
-                terms_version=serializer.validated_data['terms_version'],
-                terms_accepted_at=timezone.now(),
-                consent_ip=AuditService.get_client_ip(request)
-            )
-            AuditService.log_event(request, user, "USER_REGISTERED")
-            return Response({"message": "Conta criada com sucesso."}, status=status.HTTP_201_CREATED)
+            try:
+                user = User.objects.create_user(
+                    nome=serializer.validated_data['nome'],
+                    email=serializer.validated_data['email'],
+                    password=serializer.validated_data['password'],
+                    ano_nascimento=serializer.validated_data.get('ano_nascimento'),
+                    terms_accepted=serializer.validated_data['terms_accepted'],
+                    terms_version=serializer.validated_data['terms_version'],
+                    terms_accepted_at=timezone.now(),
+                    consent_ip=AuditService.get_client_ip(request)
+                )
+                AuditService.log_event(request, user, "USER_REGISTERED")
+                return Response({"message": "Conta criada com sucesso."}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
