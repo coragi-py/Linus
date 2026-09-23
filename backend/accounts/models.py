@@ -2,11 +2,30 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+def validar_nickname_apropriado(value):
+    """
+    Validador para bloquear palavras impróprias ou reservadas no nickname.
+    """
+    # Lista de termos bloqueados (adicione os termos impróprios reais aqui)
+    blacklist = [
+        'admin', 'administrador', 'root', 'suporte', 'linus', 'sistema',
+        'palavrao1', 'palavrao2'
+    ]
+    
+    valor_limpo = value.lower().strip()
+    for palavra in blacklist:
+        if palavra in valor_limpo:
+            raise ValidationError("O nome escolhido contém termos não permitidos pelo sistema.")
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('O e-mail é obrigatório para o cadastro.')
+        if 'nome' not in extra_fields or not extra_fields['nome']:
+            raise ValueError('O nome/nickname é obrigatório para o cadastro.')
+            
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         if password:
@@ -18,6 +37,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('role', CustomUser.Role.ADMIN_SISTEMA)
+        extra_fields.setdefault('nome', 'Administrador') # Fallback para superuser
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser deve ter is_staff=True.')
@@ -35,6 +55,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=255, db_index=True)
+    
+    # Novo campo de Nickname com validação
+    nome = models.CharField(
+        max_length=100,
+        validators=[validar_nickname_apropriado],
+        help_text="Nome de usuário"
+    )
     
     # Dados do Usuário
     ano_nascimento = models.IntegerField(null=True, blank=True)
@@ -62,7 +89,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['nome'] # Exigido ao rodar createsuperuser no terminal
 
     class Meta:
         db_table = 'TB_USUARIO'
@@ -70,7 +97,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Usuários'
 
     def __str__(self):
-        return self.email
+        return f"{self.nome} ({self.email})"
 
 
 class TwoFactorAuthToken(models.Model):

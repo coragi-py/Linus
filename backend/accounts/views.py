@@ -116,63 +116,69 @@ class GoogleAuthView(APIView):
         serializer = GoogleAuthSerializer(data=request.data)
         if serializer.is_valid():
             token_str = serializer.validated_data['id_token']
+            
+            # 1. ISOLAMENTO DO TRY-EXCEPT APENAS PARA O TOKEN
             try:
-                # Validação criptográfica do token na biblioteca oficial do Google
                 idinfo = id_token.verify_oauth2_token(
                     token_str, google_requests.Request(), settings.GOOGLE_OAUTH2_CLIENT_ID
                 )
+            except ValueError:
+                AuditService.log_event(request, None, "FAILED_GOOGLE_LOGIN_ATTEMPT")
+                return Response({"error": "Token do Google inválido ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
                 
-                email = idinfo.get('email')
-                if not idinfo.get('email_verified'):
-                    return Response({"error": "O e-mail da conta Google não foi verificado."}, status=status.HTTP_400_BAD_REQUEST)
+            # 2. O RESTO DO CÓDIGO FICA FORA DO TRY
+            email = idinfo.get('email')
+            if not idinfo.get('email_verified'):
+                return Response({"error": "O e-mail da conta Google não foi verificado."}, status=status.HTTP_400_BAD_REQUEST)
 
-                user = User.objects.filter(email=email).first()
+            user = User.objects.filter(email=email).first()
 
-                if user:
-                    # Fluxo de Login Existente via Google
-                    if user.is_2fa_enabled:
-                        otp = SecurityService.create_2fa_token(user)
-                        EmailService.send_2fa_email(user.email, otp)
-                        AuditService.log_event(request, user, "GOOGLE_LOGIN_2FA_SENT")
-                        return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
+            if user:
+                # Fluxo de Login Existente via Google
+                if user.is_2fa_enabled:
+                    otp = SecurityService.create_2fa_token(user)
+                    EmailService.send_2fa_email(user.email, otp)
+                    AuditService.log_event(request, user, "GOOGLE_LOGIN_2FA_SENT")
+                    return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
 
-                    tokens = get_tokens_for_user(user)
-                    AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
-                    update_last_login(None, user)
-                    return Response(tokens, status=status.HTTP_200_OK)
-                
-                else:
-                    # Fluxo de Registro via Google (Idempotente)
-                    terms_accepted = serializer.validated_data.get('terms_accepted')
-                    terms_version = serializer.validated_data.get('terms_version')
-                    ano_nascimento = serializer.validated_data.get('ano_nascimento')
+                tokens = get_tokens_for_user(user)
+                AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
+                update_last_login(None, user)
+                return Response(tokens, status=status.HTTP_200_OK)
+            
+            else:
+                # Fluxo de Registro via Google
+                terms_accepted = serializer.validated_data.get('terms_accepted')
+                terms_version = serializer.validated_data.get('terms_version')
+                ano_nascimento = serializer.validated_data.get('ano_nascimento')
+                nome_usuario = serializer.validated_data.get('name') # Capturando o nome enviado pelo Front
 
-                    if not terms_accepted:
-                        return Response({
-                            "status": "registration_required",
-                            "message": "Usuário não encontrado. Aceite os termos de uso para concluir o cadastro."
-                        }, status=status.HTTP_403_FORBIDDEN)
+                if not terms_accepted:
+                    return Response({
+                        "status": "registration_required",
+                        "message": "Usuário não encontrado. Aceite os termos de uso para concluir o cadastro."
+                    }, status=status.HTTP_403_FORBIDDEN)
 
+                try:
+                    # Agora, se o create_user falhar, ele não dirá que é culpa do Token
                     user = User.objects.create_user(
                         email=email,
+                        nome=nome_usuario, # Passando o nome obrigatório
                         ano_nascimento=ano_nascimento,
                         terms_accepted=terms_accepted,
                         terms_version=terms_version,
                         terms_accepted_at=timezone.now(),
                         consent_ip=AuditService.get_client_ip(request)
                     )
-                    # Contas Google não utilizam senha local
                     user.set_unusable_password()
                     user.save()
 
                     AuditService.log_event(request, user, "USER_REGISTERED_GOOGLE")
                     tokens = get_tokens_for_user(user)
                     return Response(tokens, status=status.HTTP_201_CREATED)
+                except Exception as e:
+                    return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            except ValueError:
-                AuditService.log_event(request, None, "FAILED_GOOGLE_LOGIN_ATTEMPT")
-                return Response({"error": "Token do Google inválido ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
-                
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetRequestView(APIView):
