@@ -8,6 +8,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { LinusProvider } from "@/context/LinusContext";
@@ -20,7 +22,7 @@ function NotFoundComponent() {
         <h1 className="font-display text-7xl font-bold text-primary">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Essa página não existe ou foi movida para outro compasso.
+          Essa página não existe ou foi movida para outro local.
         </p>
         <div className="mt-6">
           <Link
@@ -117,15 +119,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LinusProvider>
-        <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AppShell>
-      </LinusProvider>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <LinusProvider>
+          <AppShell>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </AppShell>
+        </LinusProvider>
+        <Toaster position="top-right" richColors />
+      </GoogleOAuthProvider>
     </QueryClientProvider>
   );
 }
