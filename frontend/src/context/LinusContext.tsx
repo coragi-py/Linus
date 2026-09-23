@@ -110,10 +110,33 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       state,
       ready,
       login: (name) => update({ name: name || "Aluno Linus", loggedIn: true }),
-      logout: () => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        update({ loggedIn: false });
+      logout: async () => {
+        try {
+          const accessToken = localStorage.getItem("access_token");
+          const refreshToken = localStorage.getItem("refresh_token");
+
+          // Só aciona o backend se houver tokens válidos para invalidar
+          if (accessToken && refreshToken) {
+            await fetch("http://localhost:8000/api/v1/auth/logout/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`, // Necessário para a view saber quem está deslogando (IsAuthenticated)
+              },
+              body: JSON.stringify({ refresh: refreshToken }),
+            });
+          }
+        } catch (error) {
+          console.error("Falha ao registrar logout no servidor:", error);
+        } finally {
+          // O bloco finally garante que, mesmo se a API falhar ou estiver fora do ar,
+          // o usuário não ficará preso na tela logado.
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+
+          // Redirecionamento "hard" para limpar a memória do React e voltar à Landing Page
+          window.location.href = "/";
+        }
       },
       setRole: (role) => update({ role }),
       finishPlacement: (placement) => update({ placement, placementDone: true }),
