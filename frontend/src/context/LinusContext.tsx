@@ -110,7 +110,11 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       state,
       ready,
       login: (name) => update({ name: name || "Aluno Linus", loggedIn: true }),
-      logout: () => update({ loggedIn: false }),
+      logout: () => {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        update({ loggedIn: false });
+      },
       setRole: (role) => update({ role }),
       finishPlacement: (placement) => update({ placement, placementDone: true }),
       completeLesson: (lessonId) =>

@@ -5,6 +5,8 @@ import { z } from "zod";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "sonner";
 import { Lock, Mail, Music, LogIn } from "lucide-react";
+import { jwtDecode } from "jwt-decode";
+import { useLinus, type Role } from "@/context/LinusContext";
 
 export const Route = createFileRoute("/login")({
   component: LoginComponent,
@@ -20,6 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginComponent() {
   const navigate = useNavigate();
+  const { login, setRole } = useLinus();
 
   const {
     register,
@@ -49,14 +52,21 @@ function LoginComponent() {
 
       const result = await response.json();
 
-      // Armazenamento seguro do token no client-side
+      // 1. Armazenamento seguro dos tokens
       localStorage.setItem("access_token", result.access);
       if (result.refresh) {
         localStorage.setItem("refresh_token", result.refresh);
       }
 
-      toast.success("Bem-vindo de volta ao Linus!");
-      navigate({ to: "/painel" });
+      // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
+      const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
+
+      // 3. Atualiza o Cérebro da Aplicação (LinusContext)
+      setRole((decoded.role as Role) || "estudante");
+      login(decoded.nome || "Usuário");
+
+      toast.success("Acesso liberado com sucesso!");
+      navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
     } catch (error: any) {
       toast.error(error.message || "Falha na comunicação com o servidor.");
     }
@@ -89,10 +99,21 @@ function LoginComponent() {
       if (!response.ok) throw new Error("Falha na autenticação com o Google.");
 
       const result = await response.json();
+      // 1. Armazenamento seguro dos tokens
       localStorage.setItem("access_token", result.access);
+      if (result.refresh) {
+        localStorage.setItem("refresh_token", result.refresh);
+      }
 
-      toast.success("Login efetuado com sucesso!");
-      navigate({ to: "/painel" });
+      // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
+      const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
+
+      // 3. Atualiza o Cérebro da Aplicação (LinusContext)
+      setRole((decoded.role as Role) || "estudante");
+      login(decoded.nome || "Usuário");
+
+      toast.success("Acesso liberado com sucesso!");
+      navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
     } catch (error: any) {
       toast.error(error.message || "Erro ao processar o login com o Google.");
     }

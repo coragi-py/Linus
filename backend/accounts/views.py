@@ -28,6 +28,7 @@ def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     # Implementação RBAC: injeta a role no payload do JWT para leitura no Frontend (TanStack Router)
     refresh['role'] = user.role
+    refresh['nome'] = user.nome
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
@@ -53,7 +54,8 @@ class RegisterView(APIView):
                     consent_ip=AuditService.get_client_ip(request)
                 )
                 AuditService.log_event(request, user, "USER_REGISTERED")
-                return Response({"message": "Conta criada com sucesso."}, status=status.HTTP_201_CREATED)
+                tokens = get_tokens_for_user(user) 
+                return Response({"message": "Conta criada com sucesso."}, tokens, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

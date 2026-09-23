@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Lock, Mail, User, Calendar, ShieldCheck, Music, Eye, EyeOff } from "lucide-react";
 import { blacklistNicknames } from "@/lib/blacklist";
 import { VERSAO_TERMOS_USO } from "@/lib/constants";
+import { jwtDecode } from "jwt-decode";
+import { useLinus, type Role } from "@/context/LinusContext";
 
 export const Route = createFileRoute("/registro")({
   component: RegistroComponent,
@@ -72,6 +74,7 @@ type RegistroFormValues = z.infer<typeof manualSchema>;
 
 function RegistroComponent() {
   const navigate = useNavigate();
+  const { login, setRole } = useLinus();
   const [termosLidos, setTermosLidos] = useState(false);
   const [fluxoGooglePendente, setFluxoGooglePendente] = useState(false);
   const [googleIdTokenTemp, setGoogleIdTokenTemp] = useState<string | null>(null);
@@ -127,9 +130,22 @@ function RegistroComponent() {
       if (!response.ok) throw new Error("Erro na autenticação com Google.");
 
       const result = await response.json();
+
+      // 1. Armazenamento seguro dos tokens
       localStorage.setItem("access_token", result.access);
-      toast.success("Login com Google efetuado com sucesso!");
-      navigate({ to: "/painel" });
+      if (result.refresh) {
+        localStorage.setItem("refresh_token", result.refresh);
+      }
+
+      // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
+      const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
+
+      // 3. Atualiza o Cérebro da Aplicação (LinusContext)
+      setRole((decoded.role as Role) || "estudante");
+      login(decoded.nome || "Usuário");
+
+      toast.success("Acesso liberado com sucesso!");
+      navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
     } catch (error: any) {
       toast.error(error.message || "Erro no processo do Google OAuth.");
     }
@@ -158,9 +174,22 @@ function RegistroComponent() {
         }
 
         const result = await response.json();
+
+        // 1. Armazenamento seguro dos tokens
         localStorage.setItem("access_token", result.access);
-        toast.success("Cadastro via Google realizado com sucesso!");
-        navigate({ to: "/painel" });
+        if (result.refresh) {
+          localStorage.setItem("refresh_token", result.refresh);
+        }
+
+        // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
+        const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
+
+        // 3. Atualiza o Cérebro da Aplicação (LinusContext)
+        setRole((decoded.role as Role) || "estudante");
+        login(decoded.nome || "Usuário");
+
+        toast.success("Acesso liberado com sucesso!");
+        navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
       } else {
         const payload = {
           nome: data.nome,
@@ -189,7 +218,7 @@ function RegistroComponent() {
         }
 
         toast.success("Cadastro realizado com sucesso! Bem-vindo ao Linus.");
-        navigate({ to: "/painel" });
+        window.location.href = "/painel";
       }
     } catch (error: any) {
       toast.error(error.message || "Falha na comunicação com o servidor.");
