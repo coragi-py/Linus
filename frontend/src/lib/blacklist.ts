@@ -5,8 +5,6 @@ export const blacklistNicknames = [
   "suporte",
   "linus",
   "sistema",
-  "palavrao1",
-  "palavrao2",
   "anal",
   "anus",
   "arse",
