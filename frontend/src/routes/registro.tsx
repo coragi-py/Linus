@@ -7,6 +7,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "sonner";
 import { Lock, Mail, User, Calendar, ShieldCheck, Music, Eye, EyeOff } from "lucide-react";
 import { blacklistNicknames } from "@/lib/blacklist";
+import { VERSAO_TERMOS_USO } from "@/lib/constants";
 
 export const Route = createFileRoute("/registro")({
   component: RegistroComponent,
@@ -93,7 +94,6 @@ function RegistroComponent() {
   });
 
   const handleLerTermos = (e: React.MouseEvent) => {
-    e.preventDefault();
     setTermosLidos(true);
     toast.info("Termos de Uso visualizados. O aceite foi desbloqueado.");
   };
@@ -108,7 +108,7 @@ function RegistroComponent() {
         body: JSON.stringify({
           id_token: idToken,
           terms_accepted: false,
-          terms_version: "",
+          terms_version: VERSAO_TERMOS_USO,
         }),
       });
 
@@ -143,7 +143,7 @@ function RegistroComponent() {
           name: data.nome,
           ano_nascimento: data.anoNascimento,
           terms_accepted: data.aceiteTermos,
-          terms_version: "1.0",
+          terms_version: VERSAO_TERMOS_USO,
         };
 
         const response = await fetch("http://localhost:8000/api/v1/auth/google/", {
@@ -168,7 +168,7 @@ function RegistroComponent() {
           password: data.senha,
           ano_nascimento: data.anoNascimento,
           terms_accepted: data.aceiteTermos,
-          terms_version: "1.0",
+          terms_version: VERSAO_TERMOS_USO,
         };
 
         const response = await fetch("http://localhost:8000/api/v1/auth/register/", {

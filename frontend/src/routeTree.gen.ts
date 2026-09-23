@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PraticaRouteImport } from './routes/pratica'
 import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TriagemRouteImport } from './routes/triagem'
 import { Route as TrilhaRouteImport } from './routes/trilha'
 import { Route as AdminConteudoRouteImport } from './routes/admin.conteudo'
@@ -51,6 +52,11 @@ const RegistroRoute = RegistroRouteImport.update({
   path: '/registro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TriagemRoute = TriagemRouteImport.update({
   id: '/triagem',
   path: '/triagem',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/painel': typeof PainelRoute
   '/pratica': typeof PraticaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/pratica'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/pratica'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/pratica'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   PainelRoute: typeof PainelRoute
   PraticaRoute: typeof PraticaRoute
   RegistroRoute: typeof RegistroRoute
+  TermosRoute: typeof TermosRoute
   TriagemRoute: typeof TriagemRoute
   TrilhaRoute: typeof TrilhaRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegistroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/triagem': {
       id: '/triagem'
       path: '/triagem'
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   PainelRoute: PainelRoute,
   PraticaRoute: PraticaRoute,
   RegistroRoute: RegistroRoute,
+  TermosRoute: TermosRoute,
   TriagemRoute: TriagemRoute,
   TrilhaRoute: TrilhaRoute,
   AdminConteudoRoute: AdminConteudoRoute,
