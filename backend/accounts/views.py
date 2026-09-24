@@ -352,7 +352,7 @@ class DeleteAccountView(APIView):
         # Anonimização Criptográfica (Art. 18, IV e VI da LGPD)
         # Os dados pessoais são destruídos, mas o ID é mantido para não quebrar a 
         # integridade relacional dos logs de auditoria e métricas gamificadas.
-        user.email = f"********_{user.id}@anon.com"
+        user.email = f"anon_{str(user.id)[:8]}@anon.com"
         user.nome = "********"
         user.set_unusable_password()
         user.is_active = False
