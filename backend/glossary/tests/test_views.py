@@ -1,5 +1,5 @@
 from rest_framework.test import APITestCase, APIClient
-from Django.contrib.auth.models import User
+from django.contrib.auth.models import User
 from rest_framework import status
 from django.urls import reverse
 from glossary.models import Glossario
