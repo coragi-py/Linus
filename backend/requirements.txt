@@ -1,29 +1,36 @@
+# Adicionado dependências de autenticação e criptografia. Por Fábio 19/09.
+
 # Django & Framework Web
-Django>=5.1,<6.0
-djangorestframework>=3.15.0
-django-cors-headers>=4.3.0
-django-filter>=24.0
+Django>=5.1,<6.0 # Versão do Django compatível com o Python 3.12
+djangorestframework>=3.15.0 # Framework para construção de APIs RESTful
+django-cors-headers>=4.3.0 # Suporte a CORS (Cross-Origin Resource Sharing) para permitir requisições de diferentes origens
+django-filter>=24.0 # Filtros avançados para consultas em APIs RESTful
 
 # Autenticação, JWT e OAuth
-djangorestframework-simplejwt>=5.3.0
-google-auth>=2.28.0
+djangorestframework-simplejwt>=5.3.0 # Autenticação JWT com suporte a rotação e blacklist de tokens
+google-auth>=2.28.0 # Validação segura de ID Tokens do Google OAuth 2.0 no backend
+argon2-cffi>=23.1.0 # Algoritmo de hash de alta segurança recomendado no checklist (Argon2id)
+cryptography>=42.0.0 # Criptografia e funçções criptográfica auxiliares
+pyotp>=2.9.0 # Geração e validação de códigos OTP (One-Time Password) para autenticação de dois fatores (2FA)
+google-auth>=2.28.0 # Validação segura de ID Tokens do Google OAuth 2.0 no backend
+requests>=2.31.0 # Requisições HTTP e integração com a API v3 da Brevo
 
 # Persistência de dados
-psycopg2-binary>=2.9.9
-dj-database-url>=2.1.0
+psycopg2-binary>=2.9.9 # Adaptador PostgreSQL para Python, necessário para conectar o Django a um banco de dados PostgreSQL
+dj-database-url>=2.1.0 # Facilita a configuração da URL do banco de dados
 
 # IA & Integrações Externas
-google-genai>=0.1.0
+google-genai>=0.1.0 # Integração com a API do Google Generative AI
 
 # Documentação OpenAPI / Swagger
-drf-spectacular>=0.27.0
+drf-spectacular>=0.27.0 # Geração automática de documentação OpenAPI/Swagger para APIs RESTful construídas com Django REST Framework
 
 # Servidor WSGI de Produção & Variáveis de Ambiente
-gunicorn>=21.2.0
-python-dotenv>=1.0.0
+gunicorn>=21.2.0 # Servidor WSGI de produção para aplicações Python, recomendado para deploy em ambientes de produção
+python-dotenv>=1.0.0 # Gerenciamento de variáveis de ambiente
 
 # Testes & Qualidade
-pytest>=8.0.0
-pytest-django>=4.8.0
-flake8>=7.0.0
-black>=24.0.0
+pytest>=8.0.0 # Framework de testes para Python, utilizado para escrever e executar testes automatizados
+pytest-django>=4.8.0 # Plugin do pytest para integração com Django, facilitando a execução de testes em projetos Django
+flake8>=7.0.0 # Ferramenta de linting para verificar a conformidade do código com padrões de estilo e detectar erros comuns
+black>=24.0.0 # Ferramenta de formatação de código para manter um estilo consistente e legível

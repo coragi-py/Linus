@@ -110,7 +110,37 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       state,
       ready,
       login: (name) => update({ name: name || "Aluno Linus", loggedIn: true }),
-      logout: () => update({ loggedIn: false }),
+      logout: async () => {
+        try {
+          const accessToken = localStorage.getItem("access_token");
+          const refreshToken = localStorage.getItem("refresh_token");
+
+          // Só aciona o backend se houver tokens válidos para invalidar
+          if (accessToken && refreshToken) {
+            await fetch("http://localhost:8000/api/v1/auth/logout/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ refresh: refreshToken }),
+            });
+          }
+        } catch (error) {
+          console.error("Falha ao registrar logout no servidor:", error);
+        } finally {
+          // 1. Destrói os tokens de autenticação
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+
+          // 2. A CORREÇÃO: Destrói o cache local do contexto (nome, role, etc)
+          localStorage.removeItem(STORAGE_KEY);
+
+          // 3. Reseta a variável de estado e recarrega a página limpa
+          update({ loggedIn: false });
+          window.location.href = "/";
+        }
+      },
       setRole: (role) => update({ role }),
       finishPlacement: (placement) => update({ placement, placementDone: true }),
       completeLesson: (lessonId) =>

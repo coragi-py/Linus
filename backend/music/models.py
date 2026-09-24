@@ -1,6 +1,6 @@
 import uuid
+from django.conf import settings
 from django.db import models
-from django.contrib.auth.models import User
 
 class Musica(models.Model):
     id_musica = models.UUIDField(
@@ -12,7 +12,7 @@ class Musica(models.Model):
     nome_musica = models.CharField(max_length=150)
     notas = models.JSONField(default=list)  # Array de notas (até 128)
     id_usuario = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         null=True, 
         blank=True, 

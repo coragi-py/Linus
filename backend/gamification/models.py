@@ -1,10 +1,10 @@
 import uuid
+from django.conf import settings
 from django.db import models
-from accounts.models import Usuario
 
 class GamificacaoPerfil(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='gamificacao')
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='gamificacao')
     streak_atual = models.IntegerField(default=0)
     melhor_streak = models.IntegerField(default=0)
     ultimo_acesso_estudo = models.DateField(null=True, blank=True)
@@ -25,7 +25,7 @@ class Badge(models.Model):
 
 class UsuarioBadge(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='badges_conquistadas')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='badges_conquistadas')
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE)
     data_conquista = models.DateTimeField(auto_now_add=True)
 

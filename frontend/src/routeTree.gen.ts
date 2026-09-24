@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GlossarioRouteImport } from './routes/glossario'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PainelRouteImport } from './routes/painel'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PraticaRouteImport } from './routes/pratica'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TriagemRouteImport } from './routes/triagem'
 import { Route as TrilhaRouteImport } from './routes/trilha'
 import { Route as AdminConteudoRouteImport } from './routes/admin.conteudo'
@@ -30,9 +34,19 @@ const GlossarioRoute = GlossarioRouteImport.update({
   path: '/glossario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PainelRoute = PainelRouteImport.update({
   id: '/painel',
   path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PraticaRoute = PraticaRouteImport.update({
@@ -40,9 +54,19 @@ const PraticaRoute = PraticaRouteImport.update({
   path: '/pratica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegistroRoute = RegistroRouteImport.update({
   id: '/registro',
   path: '/registro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TriagemRoute = TriagemRouteImport.update({
@@ -74,9 +98,13 @@ const LicaoLessonIdRoute = LicaoLessonIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -86,9 +114,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -99,9 +131,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/glossario': typeof GlossarioRoute
+  '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
+  '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
   '/trilha': typeof TrilhaRoute
   '/admin/conteudo': typeof AdminConteudoRoute
@@ -113,9 +149,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -125,9 +165,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -137,9 +181,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/glossario'
+    | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
+    | '/termos'
     | '/triagem'
     | '/trilha'
     | '/admin/conteudo'
@@ -150,9 +198,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GlossarioRoute: typeof GlossarioRoute
+  LoginRoute: typeof LoginRoute
   PainelRoute: typeof PainelRoute
+  PerfilRoute: typeof PerfilRoute
   PraticaRoute: typeof PraticaRoute
+  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RegistroRoute: typeof RegistroRoute
+  TermosRoute: typeof TermosRoute
   TriagemRoute: typeof TriagemRoute
   TrilhaRoute: typeof TrilhaRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
@@ -176,11 +228,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GlossarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/painel': {
       id: '/painel'
       path: '/painel'
       fullPath: '/painel'
       preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pratica': {
@@ -190,11 +256,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PraticaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/registro': {
       id: '/registro'
       path: '/registro'
       fullPath: '/registro'
       preLoaderRoute: typeof RegistroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/triagem': {
@@ -238,9 +318,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GlossarioRoute: GlossarioRoute,
+  LoginRoute: LoginRoute,
   PainelRoute: PainelRoute,
+  PerfilRoute: PerfilRoute,
   PraticaRoute: PraticaRoute,
+  RecuperarSenhaRoute: RecuperarSenhaRoute,
   RegistroRoute: RegistroRoute,
+  TermosRoute: TermosRoute,
   TriagemRoute: TriagemRoute,
   TrilhaRoute: TrilhaRoute,
   AdminConteudoRoute: AdminConteudoRoute,

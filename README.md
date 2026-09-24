@@ -211,21 +211,31 @@ pip install -r requirements.txt
 Na pasta `backend`, crie um arquivo chamado `.env` usando o modelo abaixo:
 
 ```env
-DJANGO_SECRET_KEY=troque-esta-chave-por-uma-chave-local-segura
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_SECRET_KEY= #Chave secreta do Django
+DJANGO_DEBUG=True #Altere para False em produção
+DJANGO_ALLOWED_HOSTS= #Adicione os hosts permitidos em produção, separados por vírgula. ex: localhost
+CORS_ALLOWED_ORIGINS= #Adicione os domínios permitidos para CORS, separados por vírgula. ex: http://localhost:8080,https://meusite.com
 
 DB_ENGINE=django.db.backends.postgresql
-DB_NAME=linus_db
-DB_USER=linus_user
-DB_PASSWORD=linus_password
-DB_HOST=localhost
-DB_PORT=5432
+DB_HOST= #Insira o host do banco de dados PostgreSQL. ex: localhost
+DB_PORT= #Insira a porta do banco de dados PostgreSQL. ex: 5432
+POSTGRES_DB= #Insira o nome do banco de dados PostgreSQL. ex: linus_db
+POSTGRES_USER= #Insira o usuário do banco de dados PostgreSQL. ex: linus_db_admin
+POSTGRES_PASSWORD= #Insira a senha do banco de dados PostgreSQL. ex: SenhaSegura123!
 
 # URL de Conexão do Django (Usada pelo dj-database-url)
-DATABASE_URL=postgres://usuarioBancoAqui:SenhaBancoAqui@localhost:5432/linus_db
+DATABASE_URL= #Insira a URL de conexão do banco de dados PostgreSQL. ex: postgres://linus_db_admin:SenhaSegura123!@localhost:5432/linus_db
 
-GEMINI_API_KEY=
+GEMINI_API_KEY= #Inisira a chave da API do Gemini, se aplicável. ex: sua_chave_api_gemini
+GOOGLE_OAUTH2_CLIENT_ID= # Insira o client id gerado no Google Cloud Platform
+GOOGLE_OAUTH_CLIENT_SECRET_KEY= # Insira a Secret Key gerada no Google Cloud Platform
+
+# Configurações de email (Brevo)
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USER= # Insira o usuário do SMTP do Brevo. ex: 123@smtp-relay.brevo.com
+BREVO_SMTP_PASSWORD= # Insira a senha do SMTP do Brevo. ex: xsmtpsib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DEFAULT_FROM_EMAIL= # Insira o email padrão para envio de emails. ex: nao-responda@linus.app.br
 ```
 
 A chave local pode ser gerada com:
@@ -330,7 +340,7 @@ npm run dev
 O Vite exibirá a URL local no terminal. Normalmente:
 
 ```text
-http://localhost:5173/
+http://localhost:8000/
 ```
 
 Para abrir o servidor automaticamente no navegador:
