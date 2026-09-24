@@ -24,18 +24,17 @@ jobs:
           pip install -r requirements.txt
           pip install coverage
 
-      - name: 4. Criar arquivo .env temporario para CI/CD
+      - name: 4. Injetar Chaves de Teste (Bypass de Env)
         run: |
-          cd backend
-          echo 'SECRET_KEY="chave-temporaria-para-testes-ci-cd"' > .env
-          echo 'DATABASE_URL="sqlite:///:memory:"' >> .env
-          echo 'GOOGLE_OAUTH2_CLIENT_ID="dummy-client-id"' >> .env
-          echo 'FRONTEND_URL="http://localhost:3000"' >> .env
-
-          # Caso o seu projeto procure o .env dentro da pasta core/
-          cp .env core/.env || true
+          # Adiciona as variáveis diretamente no final do settings.py, sobrescrevendo qualquer erro de .env
+          echo "" >> backend/core/settings.py
+          echo "SECRET_KEY = 'chave-secreta-garantida-ci-cd-12345'" >> backend/core/settings.py
+          echo "GOOGLE_OAUTH2_CLIENT_ID = 'google-dummy-id-123'" >> backend/core/settings.py
+          echo "FRONTEND_URL = 'http://localhost:3000'" >> backend/core/settings.py
 
       - name: 5. Rodar testes e verificar cobertura
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           cd backend
           coverage run manage.py test accounts audit glossary music placement
