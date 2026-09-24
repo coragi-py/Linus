@@ -29,6 +29,20 @@ export const Route = createFileRoute("/admin/conteudo")({
 
 const API_BASE = "http://127.0.0.1:8000/api/v1";
 
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
 // Categorias padronizadas do Glossário
 const CATEGORIAS_GLOSSARIO = [
   "Pautas e Claves",

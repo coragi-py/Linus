@@ -8,7 +8,7 @@ from .views import GlossarioViewSet
 router = DefaultRouter()
 # Permite chamdas pelo admin em /api/v1/glossary/termos
 router.register(r'termos', GlossarioViewSet, basename='glossario-termos')
-# Permite chamadas pela telapública em /api/v1/glossary
+# Permite chamadas pela tela pública em /api/v1/glossary
 router.register(r'', GlossarioViewSet, basename='glossario')
 
 urlpatterns = [

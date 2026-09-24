@@ -43,8 +43,22 @@ function Dicionario() {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/glossary/")
-      .then((resposta) => resposta.json())
+    // Busca o token no navegador
+    const token = localStorage.getItem("access_token");
+
+    fetch("http://127.0.0.1:8000/api/v1/glossary/", {
+      method: "GET",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((resposta) => {
+        if (!resposta.ok) {
+          throw new Error(`Erro do servidor: ${resposta.status}`);
+        }
+        return resposta.json();
+      })
       .then((dados) => {
         const lista = Array.isArray(dados) ? dados : dados.results || [];
         const normalizado: GlossaryItem[] = lista.map((item: any) => ({
@@ -69,7 +83,6 @@ function Dicionario() {
     return dadosGlossario.filter((t) => {
       const termoCat = t.category.toLowerCase();
 
-      // Mapeamento flexível com os formatos gravados no banco
       const categoriaValida =
         cat === "Todas" ||
         (cat === "Pautas" && (termoCat.includes("pauta") || termoCat.includes("clave"))) ||
