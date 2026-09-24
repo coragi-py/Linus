@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from rest_framework.throttling import ScopedRateThrottle
@@ -351,9 +352,7 @@ class DeleteAccountView(APIView):
         # Anonimização Criptográfica (Art. 18, IV e VI da LGPD)
         # Os dados pessoais são destruídos, mas o ID é mantido para não quebrar a 
         # integridade relacional dos logs de auditoria e métricas gamificadas.
-        # fake_email = f"anon_{uuid.uuid4().hex[:12]}@deleted.local"
-        fake_email = "********"
-        user.email = fake_email
+        user.email = f"********_{user.id}@anon.com"
         user.nome = "********"
         user.set_unusable_password()
         user.is_active = False
@@ -410,3 +409,108 @@ class ChangePasswordView(APIView):
         
         AuditService.log_event(request, user, "PASSWORD_CHANGED_SUCCESSFULLY")
         return Response({"message": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)
+    
+from django.utils import timezone
+from datetime import timedelta
+
+from django.utils import timezone
+from datetime import timedelta
+
+class AdminSystemMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ['admin-sistema', 'sistema']:
+            return Response({"error": "Acesso restrito a administradores de sistema."}, status=status.HTTP_403_FORBIDDEN)
+
+        # FILTRO LGPD: Ignora usuários anonimizados pela nova máscara de asteriscos
+        valid_users = User.objects.exclude(email__endswith="@anon.com")
+
+        total_users = valid_users.count()
+        active_users = valid_users.filter(is_active=True).count()
+
+        atividade_diaria = []
+        for i in range(6, -1, -1):
+            date = timezone.now() - timedelta(days=i)
+            dia_str = date.strftime("%a") 
+            
+            ativos_dia = valid_users.filter(last_login__date=date.date()).count()
+            
+            try:
+                criados_dia = valid_users.filter(date_joined__date=date.date()).count()
+            except:
+                criados_dia = valid_users.filter(created_at__date=date.date()).count()
+
+            atividade_diaria.append({
+                "dia": dia_str,
+                "ativos": ativos_dia,
+                "licoes": criados_dia * 3 # Espaço reservado para o módulo de progresso
+            })
+
+        return Response({
+            "totais": {
+                "usuarios": total_users,
+                "ativos": active_users,
+                "licoes": sum([d["licoes"] for d in atividade_diaria]) 
+            },
+            "grafico": atividade_diaria
+        }, status=status.HTTP_200_OK)
+
+class AdminSystemUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def check_admin(self, request):
+        if request.user.role not in ['admin-sistema', 'sistema']:
+            self.permission_denied(request, "Acesso restrito a administradores.")
+
+    def get(self, request, user_id=None):
+        self.check_admin(request)
+        
+        # FILTRO LGPD: Remove os usuários com a máscara de exclusão da tabela
+        users = User.objects.exclude(email__endswith="@anon.com").order_by('-id')
+        
+        reverse_role_map = {
+            "admin-sistema": "sistema",
+            "admin-conteudo": "conteudo",
+            "estudante": "estudante"
+        }
+
+        data = [{
+            "id": u.id,
+            "nome": u.nome,
+            "email": u.email,
+            "role": reverse_role_map.get(u.role, u.role),
+            "ativo": u.is_active
+        } for u in users]
+        return Response(data, status=status.HTTP_200_OK)
+
+    def patch(self, request, user_id=None):
+        self.check_admin(request)
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        if target_user.id == request.user.id and 'ativo' in request.data and not request.data['ativo']:
+            return Response({"error": "Você não pode desativar sua própria conta."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if 'role' in request.data:
+                new_role = request.data['role']
+                
+                role_map = {
+                    "sistema": "admin-sistema",
+                    "conteudo": "admin-conteudo",
+                    "estudante": "estudante"
+                }
+                target_user.role = role_map.get(new_role, new_role)
+                AuditService.log_event(request, target_user, "ADMIN_CHANGED_USER_ROLE")
+                
+            if 'ativo' in request.data:
+                target_user.is_active = request.data['ativo']
+                AuditService.log_event(request, target_user, "ADMIN_TOGGLED_USER_STATUS")
+
+            target_user.save()
+            return Response({"message": "Usuário atualizado com sucesso."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Erro interno ao atualizar: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

@@ -54,7 +54,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ADMIN_SISTEMA = 'admin-sistema', 'Admin Sistema'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True, max_length=255, db_index=True)
+    email = models.EmailField(unique=True, max_length=50, db_index=True)
     
     # Novo campo de Nickname com validação
     nome = models.CharField(
