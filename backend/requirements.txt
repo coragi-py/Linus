@@ -20,7 +20,7 @@ psycopg2-binary>=2.9.9 # Adaptador PostgreSQL para Python, necessário para cone
 dj-database-url>=2.1.0 # Facilita a configuração da URL do banco de dados
 
 # IA & Integrações Externas
-google-genai>=0.1.0 # Integração com a API do Google Generative AI
+google-genai==latest # Integração com a API do Google Generative AI
 
 # Documentação OpenAPI / Swagger
 drf-spectacular>=0.27.0 # Geração automática de documentação OpenAPI/Swagger para APIs RESTful construídas com Django REST Framework
