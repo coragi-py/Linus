@@ -73,7 +73,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
     # Autenticação e Segurança
-    is_2fa_enabled = models.BooleanField(default=False)
+    is_2fa_enabled = models.BooleanField(default=True)
 
     # Conformidade LGPD
     terms_accepted = models.BooleanField(default=False)

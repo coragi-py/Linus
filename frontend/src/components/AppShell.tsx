@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, Navigate } from "@tanstack/react-router";
 import { Flame, LogOut, Sparkles, LogIn, UserCircle, Settings } from "lucide-react";
 import { LinusLogo } from "./Logo";
 import { AiAssistant } from "./AiAssistant";
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Mapeamento RBAC espelhando os perfis do backend (Django: 'usuario', 'admin-conteudo', 'admin-sistema')
 const NAV: { to: string; label: string; roles: string[] }[] = [
   { to: "/trilha", label: "Trilha", roles: ["estudante", "usuario"] },
   { to: "/pratica", label: "Prática Livre", roles: ["estudante", "usuario"] },
@@ -29,24 +28,61 @@ const NAV: { to: string; label: string; roles: string[] }[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { state, logout } = useLinus();
+  // A variável 'ready' diz se o localStorage já terminou de carregar
+  const { state, ready, logout } = useLinus();
   const [aiOpen, setAiOpen] = useState(false);
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // 1. CONTROLE DE HIDRATAÇÃO
+  // Segura a tela em branco por um milissegundo para evitar Falsos Positivos de redirecionamento.
+  if (!ready) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  // 2. CENTRAL DE SEGURANÇA (GUARD)
+  const publicRoutes = ["/", "/triagem", "/registro", "/login", "/termos"];
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  // Regra A: Usuário NÃO logado tentando acessar rota privada
+  if (!state.loggedIn && !isPublicRoute) {
+    return <Navigate to="/login" replace />; // Aborta e manda pro login
+  }
+
+  // Regra B: Validações para usuários LOGADOS
+  if (state.loggedIn) {
+    // Regra B.1: Se tentar acessar a Landing Page, Login ou Registro, joga de volta pro painel
+    if (pathname === "/" || pathname === "/login" || pathname === "/registro") {
+      return <Navigate to="/painel" replace />;
+    }
+
+    const currentRole = state.role || "usuario";
+
+    // Regra B.2 (RBAC): Bloqueia usuários comuns tentando acessar rotas de Admin Conteúdo
+    if (
+      pathname.startsWith("/admin/conteudo") &&
+      !["admin-conteudo", "conteudo"].includes(currentRole)
+    ) {
+      return <Navigate to="/painel" replace />;
+    }
+
+    // Regra B.3 (RBAC): Bloqueia usuários comuns tentando acessar rotas de Admin Sistema
+    if (
+      pathname.startsWith("/admin/sistema") &&
+      !["admin-sistema", "sistema"].includes(currentRole)
+    ) {
+      return <Navigate to="/painel" replace />;
+    }
+  }
+
+  // 3. RENDERIZAÇÃO DAS TELAS AUTORIZADAS
   const isLesson = pathname.startsWith("/licao");
 
-  // Identifica rotas públicas/deslogadas para renderizar o header limpo
-  const isPublicHome =
-    !state.loggedIn &&
-    (pathname === "/" ||
-      pathname === "/triagem" ||
-      pathname === "/registro" ||
-      pathname === "/login" ||
-      pathname === "/termos");
-
+  // Telas de lição não exibem Header e Footer, apenas o conteúdo focado
   if (isLesson) return <>{children}</>;
 
-  if (isPublicHome) {
+  // Monta a estrutura deslogada (Landing page, Triagem, Termos)
+  if (!state.loggedIn && isPublicRoute) {
     return (
       <div className="min-h-screen">
         <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
@@ -81,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // Prevenção de erro caso a role ainda esteja nula na hidratação
+  // Monta a estrutura logada (Painel e áreas internas)
   const currentRole = state.role || "usuario";
   const items = NAV.filter((n) => n.roles.includes(currentRole));
 
@@ -89,10 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <Link
-            to={state.loggedIn ? "/painel" : "/"}
-            className="focus-ring flex items-center gap-2 rounded-lg"
-          >
+          <Link to="/painel" className="focus-ring flex items-center gap-2 rounded-lg">
             <span className="text-primary">
               <LinusLogo size={38} />
             </span>
@@ -116,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {(currentRole === "estudante" || currentRole === "usuario") && state.loggedIn && (
+            {(currentRole === "estudante" || currentRole === "usuario") && (
               <div className="mr-2 hidden items-center gap-3 sm:flex">
                 <span
                   className="neu-sm flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold"
@@ -137,51 +170,40 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="hidden sm:inline">Assistente</span>
             </button>
 
-            {state.loggedIn ? (
-              <div className="flex items-center gap-1 ml-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="focus-ring flex items-center gap-2 rounded-lg p-1.5 outline-none transition-colors hover:bg-muted">
-                    <div className="hidden flex-col items-end md:flex">
-                      <span className="text-[10px] font-bold uppercase text-primary/70">
-                        {/* Fallback amigável caso a ROLE_LABEL do Context ainda não tenha sido atualizada */}
-                        {ROLE_LABEL?.[currentRole] || currentRole.replace("-", " ")}
-                      </span>
-                      <span className="text-xs font-bold leading-tight truncate max-w-[120px]">
-                        {state.name ? state.name.split(" ")[0] : "Usuário"}
-                      </span>
-                    </div>
-                    <UserCircle className="size-8 text-primary" strokeWidth={1.5} />
-                  </DropdownMenuTrigger>
+            <div className="flex items-center gap-1 ml-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger className="focus-ring flex items-center gap-2 rounded-lg p-1.5 outline-none transition-colors hover:bg-muted">
+                  <div className="hidden flex-col items-end md:flex">
+                    <span className="text-[10px] font-bold uppercase text-primary/70">
+                      {ROLE_LABEL?.[currentRole] || currentRole.replace("-", " ")}
+                    </span>
+                    <span className="text-xs font-bold leading-tight truncate max-w-[120px]">
+                      {state.name ? state.name.split(" ")[0] : "Usuário"}
+                    </span>
+                  </div>
+                  <UserCircle className="size-8 text-primary" strokeWidth={1.5} />
+                </DropdownMenuTrigger>
 
-                  <DropdownMenuContent align="end" className="w-56 font-sans">
-                    <DropdownMenuLabel className="font-bold">Minha Conta</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/perfil" className="flex cursor-pointer items-center gap-2 py-2">
-                        <Settings className="size-4 text-muted-foreground" />
-                        <span className="font-medium">Perfil e Privacidade</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={logout}
-                      className="flex cursor-pointer items-center gap-2 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-                    >
-                      <LogOut className="size-4" />
-                      <span className="font-bold">Sair do sistema</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="focus-ring flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow-neu-sm active:translate-y-0.5"
-              >
-                <LogIn className="size-4" aria-hidden />
-                Entrar
-              </Link>
-            )}
+                <DropdownMenuContent align="end" className="w-56 font-sans">
+                  <DropdownMenuLabel className="font-bold">Minha Conta</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/perfil" className="flex cursor-pointer items-center gap-2 py-2">
+                      <Settings className="size-4 text-muted-foreground" />
+                      <span className="font-medium">Perfil e Privacidade</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="flex cursor-pointer items-center gap-2 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  >
+                    <LogOut className="size-4" />
+                    <span className="font-bold">Sair do sistema</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
@@ -189,7 +211,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main>{children}</main>
 
       <footer className="mt-16 border-t border-border py-8 text-center text-xs text-muted-foreground">
-        Linus — teoria musical para todos.
+        Linus — teoria musical para todas as idades.
       </footer>
 
       <AiAssistant open={aiOpen} onOpenChange={setAiOpen} />

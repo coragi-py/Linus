@@ -121,7 +121,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`, // Necessário para a view saber quem está deslogando (IsAuthenticated)
+                Authorization: `Bearer ${accessToken}`,
               },
               body: JSON.stringify({ refresh: refreshToken }),
             });
@@ -129,12 +129,15 @@ export function LinusProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("Falha ao registrar logout no servidor:", error);
         } finally {
-          // O bloco finally garante que, mesmo se a API falhar ou estiver fora do ar,
-          // o usuário não ficará preso na tela logado.
+          // 1. Destrói os tokens de autenticação
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
 
-          // Redirecionamento "hard" para limpar a memória do React e voltar à Landing Page
+          // 2. A CORREÇÃO: Destrói o cache local do contexto (nome, role, etc)
+          localStorage.removeItem(STORAGE_KEY);
+
+          // 3. Reseta a variável de estado e recarrega a página limpa
+          update({ loggedIn: false });
           window.location.href = "/";
         }
       },
