@@ -34,3 +34,4 @@ pytest>=8.0.0 # Framework de testes para Python, utilizado para escrever e execu
 pytest-django>=4.8.0 # Plugin do pytest para integração com Django, facilitando a execução de testes em projetos Django
 flake8>=7.0.0 # Ferramenta de linting para verificar a conformidade do código com padrões de estilo e detectar erros comuns
 black>=24.0.0 # Ferramenta de formatação de código para manter um estilo consistente e legível
+coverage>=7.16.1 # Ferramente de medição de cobertura de testes

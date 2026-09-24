@@ -25,6 +25,10 @@ jobs:
           pip install coverage
 
       - name: 4. Rodar testes e verificar cobertura
+        env:
+          SECRET_KEY: "chave-temporaria-para-testes-ci-cd"
+          DATABASE_URL: "sqlite:///:memory:"
+          GOOGLE_OAUTH2_CLIENT_ID: "dummy-client-id"
         run: |
           cd backend
           coverage run manage.py test accounts audit glossary music placement
