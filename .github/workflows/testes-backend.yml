@@ -28,7 +28,7 @@ jobs:
         run: |
           cd backend
           cat <<EOF > .env
-          SECRET_KEY=chave-secreta-muito-segura-github-actions-123
+          DJANGO_SECRET_KEY=chave-secreta-muito-segura-github-actions-123
           DATABASE_URL=sqlite:///:memory:
           GOOGLE_OAUTH2_CLIENT_ID=dummy-client-id
           FRONTEND_URL=http://localhost:3000
