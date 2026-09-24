@@ -27,6 +27,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    terms_accepted = serializers.BooleanField(required=False, default=False)
+    terms_version = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
 class Verify2FASerializer(serializers.Serializer):
     email = serializers.EmailField()

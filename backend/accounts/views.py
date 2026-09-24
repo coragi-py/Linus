@@ -54,8 +54,9 @@ class RegisterView(APIView):
                     consent_ip=AuditService.get_client_ip(request)
                 )
                 AuditService.log_event(request, user, "USER_REGISTERED")
-                tokens = get_tokens_for_user(user) 
-                return Response({"message": "Conta criada com sucesso."}, tokens, status=status.HTTP_201_CREATED)
+                tokens = get_tokens_for_user(user)
+                tokens["message"] = "Conta criada com sucesso."
+                return Response(tokens, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -70,15 +71,38 @@ class LoginView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
+            terms_accepted = serializer.validated_data.get('terms_accepted')
+            terms_version = serializer.validated_data.get('terms_version')
             
-            user = authenticate(request, email=email, password=password)
-            if user is not None:
+            # Busca manual ignora a trava do is_active=False do authenticate() padrão
+            user = User.objects.filter(email=email).first()
+            
+            if user and user.check_password(password):
+                
+                # 1. Validação de LGPD / Reativação de Conta
+                if not user.terms_accepted:
+                    if terms_accepted:
+                        user.terms_accepted = True
+                        user.terms_version = terms_version
+                        user.terms_accepted_at = timezone.now()
+                        user.is_active = True # Reativa a conta oficialmente
+                        user.consent_ip = AuditService.get_client_ip(request)
+                        user.save()
+                        AuditService.log_event(request, user, "TERMS_REACCEPTED")
+                    else:
+                        return Response({
+                            "status": "terms_required", 
+                            "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
+                        }, status=status.HTTP_403_FORBIDDEN)
+
+                # 2. Validação de Segurança (2FA)
                 if user.is_2fa_enabled:
                     otp = SecurityService.create_2fa_token(user)
                     EmailService.send_2fa_email(user.email, otp)
                     AuditService.log_event(request, user, "2FA_OTP_SENT")
                     return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
                 
+                # 3. Login com Sucesso
                 tokens = get_tokens_for_user(user)
                 AuditService.log_event(request, user, "USER_LOGGED_IN")
                 update_last_login(None, user)
@@ -123,16 +147,12 @@ class GoogleAuthView(APIView):
         if serializer.is_valid():
             token_str = serializer.validated_data['id_token']
             
-            # 1. ISOLAMENTO DO TRY-EXCEPT APENAS PARA O TOKEN
             try:
-                idinfo = id_token.verify_oauth2_token(
-                    token_str, google_requests.Request(), settings.GOOGLE_OAUTH2_CLIENT_ID
-                )
+                idinfo = id_token.verify_oauth2_token(token_str, google_requests.Request(), settings.GOOGLE_OAUTH2_CLIENT_ID)
             except ValueError:
                 AuditService.log_event(request, None, "FAILED_GOOGLE_LOGIN_ATTEMPT")
                 return Response({"error": "Token do Google inválido ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
                 
-            # 2. O RESTO DO CÓDIGO FICA FORA DO TRY
             email = idinfo.get('email')
             if not idinfo.get('email_verified'):
                 return Response({"error": "O e-mail da conta Google não foi verificado."}, status=status.HTTP_400_BAD_REQUEST)
@@ -140,13 +160,33 @@ class GoogleAuthView(APIView):
             user = User.objects.filter(email=email).first()
 
             if user:
-                # Fluxo de Login Existente via Google
+                terms_accepted = serializer.validated_data.get('terms_accepted')
+                terms_version = serializer.validated_data.get('terms_version')
+
+                # 1. Validação de LGPD / Reativação de Conta via Google
+                if not user.terms_accepted:
+                    if terms_accepted:
+                        user.terms_accepted = True
+                        user.terms_version = terms_version
+                        user.terms_accepted_at = timezone.now()
+                        user.is_active = True
+                        user.consent_ip = AuditService.get_client_ip(request)
+                        user.save()
+                        AuditService.log_event(request, user, "TERMS_REACCEPTED_GOOGLE")
+                    else:
+                        return Response({
+                            "status": "terms_required", 
+                            "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
+                        }, status=status.HTTP_403_FORBIDDEN)
+
+                # 2. Validação 2FA
                 if user.is_2fa_enabled:
                     otp = SecurityService.create_2fa_token(user)
                     EmailService.send_2fa_email(user.email, otp)
                     AuditService.log_event(request, user, "GOOGLE_LOGIN_2FA_SENT")
                     return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
 
+                # 3. Login com Sucesso
                 tokens = get_tokens_for_user(user)
                 AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
                 update_last_login(None, user)
@@ -311,11 +351,11 @@ class DeleteAccountView(APIView):
         # Anonimização Criptográfica (Art. 18, IV e VI da LGPD)
         # Os dados pessoais são destruídos, mas o ID é mantido para não quebrar a 
         # integridade relacional dos logs de auditoria e métricas gamificadas.
-        fake_email = f"anon_{uuid.uuid4().hex[:12]}@deleted.local"
-        
+        # fake_email = f"anon_{uuid.uuid4().hex[:12]}@deleted.local"
+        fake_email = "********"
         user.email = fake_email
+        user.nome = "********"
         user.set_unusable_password()
-        user.ano_nascimento = None
         user.is_active = False
         user.is_2fa_enabled = False
         user.terms_accepted = False

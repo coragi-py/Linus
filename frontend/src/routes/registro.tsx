@@ -6,20 +6,18 @@ import { z } from "zod";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "sonner";
 import { Lock, Mail, User, Calendar, ShieldCheck, Music, Eye, EyeOff } from "lucide-react";
-import { blacklistNicknames } from "@/lib/blacklist";
-import { VERSAO_TERMOS_USO } from "@/lib/constants";
 import { jwtDecode } from "jwt-decode";
 import { useLinus, type Role } from "@/context/LinusContext";
+import { blacklistNicknames } from "@/lib/blacklist";
+import { VERSAO_TERMOS_USO } from "@/lib/constants";
 
 export const Route = createFileRoute("/registro")({
   component: RegistroComponent,
 });
 
-// Validação com Zod conforme as regras de negócio da LGPD e PFC
 const currentYear = new Date().getFullYear();
 const minBirthYear = currentYear - 12;
 
-// Função de validação customizada
 const validarNomeApropriado = (nome: string) => {
   const nomeLower = nome.toLowerCase().trim();
   return !blacklistNicknames.some((palavra) => nomeLower.includes(palavra));
@@ -39,11 +37,10 @@ const regrasBase = {
       `Você deve ter pelo menos 12 anos para se cadastrar (nascido até ${minBirthYear})`,
     ),
   aceiteTermos: z.boolean().refine((val) => val === true, {
-    message: "Você deve aceitar os Termos de Uso e Política de Privacidade",
+    message: "Você deve aceitar os Termos de Uso",
   }),
 };
 
-// Schema para o cadastro manual (Exige email, senha forte e confirmação)
 const manualSchema = z
   .object({
     email: z.string().email("E-mail inválido"),
@@ -62,7 +59,6 @@ const manualSchema = z
     path: ["confirmaSenha"],
   });
 
-// Schema para o fluxo Google
 const googleSchema = z.object({
   email: z.string().optional(),
   senha: z.string().optional(),
@@ -75,30 +71,38 @@ type RegistroFormValues = z.infer<typeof manualSchema>;
 function RegistroComponent() {
   const navigate = useNavigate();
   const { login, setRole } = useLinus();
+
   const [termosLidos, setTermosLidos] = useState(false);
   const [fluxoGooglePendente, setFluxoGooglePendente] = useState(false);
   const [googleIdTokenTemp, setGoogleIdTokenTemp] = useState<string | null>(null);
 
-  // Estados para visibilidade das senhas
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmaSenha, setMostrarConfirmaSenha] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegistroFormValues>({
     resolver: zodResolver(fluxoGooglePendente ? googleSchema : manualSchema),
-    mode: "onChange", // Dispara a validação a cada nova tecla digitada
-    defaultValues: {
-      aceiteTermos: false,
-    },
+    mode: "onChange",
+    defaultValues: { aceiteTermos: false },
   });
 
-  const handleLerTermos = (e: React.MouseEvent) => {
+  const handleLerTermos = () => {
     setTermosLidos(true);
     toast.info("Termos de Uso visualizados. O aceite foi desbloqueado.");
+  };
+
+  const finalizarLogin = (access: string, refresh: string, nomeFormulario: string) => {
+    localStorage.setItem("access_token", access);
+    if (refresh) localStorage.setItem("refresh_token", refresh);
+
+    const decoded = jwtDecode<{ role: string; nome?: string }>(access);
+    setRole((decoded.role as Role) || "estudante");
+    login(decoded.nome || nomeFormulario);
+
+    window.location.href = "/painel";
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
@@ -111,41 +115,41 @@ function RegistroComponent() {
         body: JSON.stringify({
           id_token: idToken,
           terms_accepted: false,
-          terms_version: VERSAO_TERMOS_USO,
+          terms_version: "",
         }),
       });
 
-      if (response.status === 403) {
-        const errData = await response.json();
-        if (errData.status === "registration_required") {
-          setGoogleIdTokenTemp(idToken);
-          setFluxoGooglePendente(true);
-          toast.warning(
-            "Complete as informações de LGPD para finalizar seu cadastro com o Google.",
-          );
-          return;
-        }
-      }
-
-      if (!response.ok) throw new Error("Erro na autenticação com Google.");
-
       const result = await response.json();
 
-      // 1. Armazenamento seguro dos tokens
-      localStorage.setItem("access_token", result.access);
-      if (result.refresh) {
-        localStorage.setItem("refresh_token", result.refresh);
+      // Interceptação 1: Novo usuário precisa completar dados LGPD
+      if (response.status === 403 && result.status === "registration_required") {
+        setGoogleIdTokenTemp(idToken);
+        setFluxoGooglePendente(true);
+        toast.warning("Complete as informações de LGPD para finalizar seu cadastro com o Google.");
+        return;
       }
 
-      // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
-      const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
+      // Interceptação 2: Usuário antigo clicou no lugar errado e tem 2FA ativo
+      if (response.status === 202 && result.status === "2fa_required") {
+        toast.info("Você já possui uma conta com 2FA. Redirecionando para o login...");
+        navigate({ to: "/login" });
+        return;
+      }
 
-      // 3. Atualiza o Cérebro da Aplicação (LinusContext)
-      setRole((decoded.role as Role) || "estudante");
-      login(decoded.nome || "Usuário");
+      // Interceptação 3: Usuário antigo com consentimento revogado
+      if (response.status === 403 && result.status === "terms_required") {
+        toast.warning("Sua conta está suspensa (LGPD). Redirecionando para o login...");
+        navigate({ to: "/login" });
+        return;
+      }
 
-      toast.success("Acesso liberado com sucesso!");
-      navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
+      if (!response.ok) throw new Error(result.error || "Erro na autenticação com Google.");
+
+      // Login/Registro direto concluído sem pendências
+      if (result.access) {
+        toast.success("Login com Google efetuado com sucesso!");
+        finalizarLogin(result.access, result.refresh, "Usuário");
+      }
     } catch (error: any) {
       toast.error(error.message || "Erro no processo do Google OAuth.");
     }
@@ -153,72 +157,47 @@ function RegistroComponent() {
 
   const onSubmit = async (data: RegistroFormValues) => {
     try {
+      let response;
+      let result;
+
       if (fluxoGooglePendente && googleIdTokenTemp) {
-        const payloadGoogle = {
-          id_token: googleIdTokenTemp,
-          name: data.nome,
-          ano_nascimento: data.anoNascimento,
-          terms_accepted: data.aceiteTermos,
-          terms_version: VERSAO_TERMOS_USO,
-        };
-
-        const response = await fetch("http://localhost:8000/api/v1/auth/google/", {
+        response = await fetch("http://localhost:8000/api/v1/auth/google/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payloadGoogle),
+          body: JSON.stringify({
+            id_token: googleIdTokenTemp,
+            name: data.nome,
+            ano_nascimento: data.anoNascimento,
+            terms_accepted: data.aceiteTermos,
+            terms_version: VERSAO_TERMOS_USO,
+          }),
         });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Erro ao finalizar cadastro com Google.");
-        }
-
-        const result = await response.json();
-
-        // 1. Armazenamento seguro dos tokens
-        localStorage.setItem("access_token", result.access);
-        if (result.refresh) {
-          localStorage.setItem("refresh_token", result.refresh);
-        }
-
-        // 2. Decodifica o JWT para extrair Cargo (RBAC) e Nome
-        const decoded = jwtDecode<{ role: string; nome?: string }>(result.access);
-
-        // 3. Atualiza o Cérebro da Aplicação (LinusContext)
-        setRole((decoded.role as Role) || "estudante");
-        login(decoded.nome || "Usuário");
-
-        toast.success("Acesso liberado com sucesso!");
-        navigate({ to: "/painel" }); // A navegação volta a ser rápida e sem refresh de tela!
       } else {
-        const payload = {
-          nome: data.nome,
-          email: data.email,
-          password: data.senha,
-          ano_nascimento: data.anoNascimento,
-          terms_accepted: data.aceiteTermos,
-          terms_version: VERSAO_TERMOS_USO,
-        };
-
-        const response = await fetch("http://localhost:8000/api/v1/auth/register/", {
+        response = await fetch("http://localhost:8000/api/v1/auth/register/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            nome: data.nome,
+            email: data.email,
+            password: data.senha,
+            ano_nascimento: data.anoNascimento,
+            terms_accepted: data.aceiteTermos,
+            terms_version: VERSAO_TERMOS_USO,
+          }),
         });
+      }
 
-        if (!response.ok) {
-          let errorMessage = "Erro ao realizar cadastro.";
-          try {
-            const errData = await response.json();
-            errorMessage = errData.detail || errData.error || errData.email?.[0] || errorMessage;
-          } catch {
-            errorMessage = "Erro interno do servidor. Tente novamente mais tarde.";
-          }
-          throw new Error(errorMessage);
-        }
+      result = await response.json();
 
+      if (!response.ok) {
+        throw new Error(
+          result.error || result.detail || result.email?.[0] || "Erro ao realizar cadastro.",
+        );
+      }
+
+      if (result.access) {
         toast.success("Cadastro realizado com sucesso! Bem-vindo ao Linus.");
-        window.location.href = "/painel";
+        finalizarLogin(result.access, result.refresh, data.nome);
       }
     } catch (error: any) {
       toast.error(error.message || "Falha na comunicação com o servidor.");
@@ -260,15 +239,15 @@ function RegistroComponent() {
           </>
         ) : (
           <div className="rounded-lg bg-amber-500/10 p-4 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400">
-            <strong>Quase lá!</strong> Identificamos sua conta Google, mas precisamos do seu ano de
-            nascimento e do aceite dos Termos (exigência LGPD).
+            <strong>Quase lá!</strong> Identificamos sua conta Google, mas precisamos do seu nome,
+            ano de nascimento e aceite dos Termos.
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase text-muted-foreground">
-              Nome Completo
+              Nome de Exibição
             </label>
             <div className="relative mt-1">
               <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
