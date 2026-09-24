@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   // 2. CENTRAL DE SEGURANÇA (GUARD)
-  const publicRoutes = ["/", "/triagem", "/registro", "/login", "/recuperar-senha"];
+  const publicRoutes = ["/", "/triagem", "/registro", "/login", "/recuperar-senha", "/termos"];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // Regra A: Usuário NÃO logado tentando acessar rota privada
