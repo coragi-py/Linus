@@ -199,7 +199,7 @@ class PasswordResetRequestView(APIView):
             try:
                 user = User.objects.get(email=email)
                 token = SecurityService.create_password_reset_token(user)
-                reset_link = f"{request.scheme}://localhost:8000/password-reset?token={token}&email={email}"
+                reset_link = f"{settings.FRONTEND_URL}/recuperar-senha?token={token}&email={email}"
                 EmailService.send_password_reset_email(user.email, reset_link)
                 AuditService.log_event(request, user, "PASSWORD_RESET_REQUESTED")
             except User.DoesNotExist:
@@ -330,3 +330,43 @@ class DeleteAccountView(APIView):
         return Response({
             "message": "Sua conta e dados pessoais foram excluídos e anonimizados com sucesso."
         }, status=status.HTTP_200_OK)
+
+class UpdateProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def put(self, request):
+        nome = request.data.get('nome')
+        if not nome or len(nome.strip()) < 3:
+            return Response({"error": "O nome deve ter pelo menos 3 caracteres."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = request.user
+        user.nome = nome.strip()
+        user.save(update_fields=['nome'])
+        
+        AuditService.log_event(request, user, "PROFILE_NAME_UPDATED")
+        
+        # Gera um novo token para o frontend atualizar o nome no cabeçalho imediatamente
+        tokens = get_tokens_for_user(user)
+        return Response({"message": "Perfil atualizado com sucesso.", "tokens": tokens}, status=status.HTTP_200_OK)
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_attempt'
+
+    def put(self, request):
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        user = request.user
+        if not user.check_password(old_password):
+            AuditService.log_event(request, user, "FAILED_PASSWORD_CHANGE_ATTEMPT")
+            return Response({"error": "A senha atual está incorreta."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        
+        AuditService.log_event(request, user, "PASSWORD_CHANGED_SUCCESSFULLY")
+        return Response({"message": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)

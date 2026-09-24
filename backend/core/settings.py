@@ -67,6 +67,8 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080")
+
 ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
@@ -139,10 +141,6 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle"
-    ],
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
         "rest_framework.throttling.ScopedRateThrottle",
     ],
@@ -150,7 +148,7 @@ REST_FRAMEWORK = {
         "anon": "10/min",
         "user": "100/min",
         "auth_attempt": "5/min",
-        "password_reset": "3/min"
+        "password_reset": "3/hour"
     },
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }

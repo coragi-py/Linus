@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as GlossarioRouteImport } from './routes/glossario'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PainelRouteImport } from './routes/painel'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PraticaRouteImport } from './routes/pratica'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TriagemRouteImport } from './routes/triagem'
@@ -42,9 +44,19 @@ const PainelRoute = PainelRouteImport.update({
   path: '/painel',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PraticaRoute = PraticaRouteImport.update({
   id: '/pratica',
   path: '/pratica',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegistroRoute = RegistroRouteImport.update({
@@ -88,7 +100,9 @@ export interface FileRoutesByFullPath {
   '/glossario': typeof GlossarioRoute
   '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
   '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
@@ -102,7 +116,9 @@ export interface FileRoutesByTo {
   '/glossario': typeof GlossarioRoute
   '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
   '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
@@ -117,7 +133,9 @@ export interface FileRoutesById {
   '/glossario': typeof GlossarioRoute
   '/login': typeof LoginRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/pratica': typeof PraticaRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registro': typeof RegistroRoute
   '/termos': typeof TermosRoute
   '/triagem': typeof TriagemRoute
@@ -133,7 +151,9 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
     | '/termos'
     | '/triagem'
@@ -147,7 +167,9 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
     | '/termos'
     | '/triagem'
@@ -161,7 +183,9 @@ export interface FileRouteTypes {
     | '/glossario'
     | '/login'
     | '/painel'
+    | '/perfil'
     | '/pratica'
+    | '/recuperar-senha'
     | '/registro'
     | '/termos'
     | '/triagem'
@@ -176,7 +200,9 @@ export interface RootRouteChildren {
   GlossarioRoute: typeof GlossarioRoute
   LoginRoute: typeof LoginRoute
   PainelRoute: typeof PainelRoute
+  PerfilRoute: typeof PerfilRoute
   PraticaRoute: typeof PraticaRoute
+  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RegistroRoute: typeof RegistroRoute
   TermosRoute: typeof TermosRoute
   TriagemRoute: typeof TriagemRoute
@@ -216,11 +242,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pratica': {
       id: '/pratica'
       path: '/pratica'
       fullPath: '/pratica'
       preLoaderRoute: typeof PraticaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/registro': {
@@ -280,7 +320,9 @@ const rootRouteChildren: RootRouteChildren = {
   GlossarioRoute: GlossarioRoute,
   LoginRoute: LoginRoute,
   PainelRoute: PainelRoute,
+  PerfilRoute: PerfilRoute,
   PraticaRoute: PraticaRoute,
+  RecuperarSenhaRoute: RecuperarSenhaRoute,
   RegistroRoute: RegistroRoute,
   TermosRoute: TermosRoute,
   TriagemRoute: TriagemRoute,

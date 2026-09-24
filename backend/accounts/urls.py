@@ -2,7 +2,7 @@ from django.urls import path
 from accounts.views import (
     RegisterView, LoginView, Verify2FAView,
     PasswordResetRequestView, PasswordResetConfirmView, LogoutView,
-    GoogleAuthView, UserPrivacyDataView, RevokeConsentView, DeleteAccountView
+    GoogleAuthView, UserPrivacyDataView, RevokeConsentView, DeleteAccountView, UpdateProfileView, ChangePasswordView
 )
 
 urlpatterns = [
@@ -18,4 +18,8 @@ urlpatterns = [
     path('privacy/data/', UserPrivacyDataView.as_view(), name='privacy-data'),
     path('privacy/revoke-consent/', RevokeConsentView.as_view(), name='privacy-revoke-consent'),
     path('privacy/delete-account/', DeleteAccountView.as_view(), name='privacy-delete-account'),
+
+    # Endpoints de gestão de perfil
+    path('profile/update/', UpdateProfileView.as_view(), name='profile-update'),
+    path('password/change/', ChangePasswordView.as_view(), name='password-change'),
 ]
