@@ -24,11 +24,15 @@ jobs:
           pip install -r requirements.txt
           pip install coverage
 
+      - name: 3.5. Criar arquivo .env temporário para CI/CD
+        run: |
+          cd backend
+          echo 'SECRET_KEY="chave-secreta-temporaria-do-github-actions"' > .env
+          echo 'DATABASE_URL="sqlite:///:memory:"' >> .env
+          echo 'GOOGLE_OAUTH2_CLIENT_ID="dummy-google-client-id"' >> .env
+          echo 'FRONTEND_URL="http://localhost:3000"' >> .env
+
       - name: 4. Rodar testes e verificar cobertura
-        env:
-          SECRET_KEY: "chave-temporaria-para-testes-ci-cd"
-          DATABASE_URL: "sqlite:///:memory:"
-          GOOGLE_OAUTH2_CLIENT_ID: "dummy-client-id"
         run: |
           cd backend
           coverage run manage.py test accounts audit glossary music placement
