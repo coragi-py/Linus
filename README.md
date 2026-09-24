@@ -1,557 +1,218 @@
-# Linus — Guia de desenvolvimento local
+# Linus
 
-Este guia explica como preparar o ambiente local do projeto Linus, executar frontend, backend e banco de dados, trabalhar em branches e abrir Pull Requests.
+> Plataforma web de apoio ao aprendizado de música, organizada como uma aplicação cliente-servidor com frontend TypeScript e API backend em Django.
 
-> **Arquitetura atual:** frontend em React/Vite e backend Django organizado como monólito modular. O PostgreSQL é executado localmente com Docker Compose. Redis, Sentry e Datadog não fazem parte do escopo atual.
+## Visão geral
 
----
+O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, glossário, triagem de nível, acompanhamento de progresso, gamificação e áreas administrativas. O projeto foi estruturado em dois componentes principais:
 
-## 1. Pré-requisitos
+- **Frontend:** aplicação TypeScript com Vite e TanStack Router, responsável pelas telas, interação, validações de experiência e consumo da API.
+- **Backend:** API Django modular, responsável por identidade, regras de domínio, persistência, auditoria e serviços de segurança.
 
-Instale as ferramentas abaixo antes de iniciar.
+## Funcionalidades mapeadas
 
-| Ferramenta     |  Versão recomendada | Verificação                          |
-| -------------- | ------------------: | ------------------------------------ |
-| Git            |    2.40 ou superior | `git --version`                      |
-| Node.js        |  20 LTS ou superior | `node --version`                     |
-| npm            | acompanha o Node.js | `npm --version`                      |
-| Python         |    3.11 ou superior | `python --version` ou `py --version` |
-| Docker Desktop |        versão atual | `docker --version`                   |
-| Docker Compose |        versão atual | `docker compose version`             |
-| VS Code        |         recomendada | opcional                             |
+| Área                 | Responsabilidade                                                              |
+| -------------------- | ----------------------------------------------------------------------------- |
+| Contas               | Cadastro, autenticação, recuperação de senha e gestão do perfil do usuário    |
+| Aprendizagem         | Trilhas, lições e conteúdos de aprendizagem                                   |
+| Exercícios e prática | Execução de atividades e recursos de prática musical                          |
+| Música               | Estruturas e regras do domínio musical                                        |
+| Glossário            | Consulta de termos e conceitos musicais                                       |
+| Triagem              | Identificação ou classificação inicial do usuário                             |
+| Progresso            | Acompanhamento da evolução do estudante                                       |
+| Gamificação          | Mecânicas de progresso, recompensas ou indicadores                            |
+| Auditoria            | Registro de eventos relevantes do sistema                                     |
+| Administração        | Gestão de conteúdo e de parâmetros do sistema                                 |
+| Assistente de IA     | Componente de interface e módulo `ai_gateway` reservado para integração de IA |
 
-No Windows, abra o Docker Desktop e aguarde até que ele esteja em execução antes de subir o banco de dados.
+## Arquitetura
 
----
+```text
+Navegador
+    |
+    | HTTP(S) / JSON
+    v
+Frontend (TypeScript + Vite + TanStack Router)
+    |- rotas e páginas
+    |- componentes de interface
+    |- contexto de aplicação
+    |- recursos de áudio e música
+    |
+    v
+Backend (Django)
+    |- core: configurações, URLs e exceções
+    |- accounts: identidade, credenciais e recuperação de senha
+    |- módulos de domínio: learning, music, exercises, glossary,
+    |   placement, progress e gamification
+    |- audit: eventos e serviços de auditoria
+    |- ai_gateway: limite de integração com serviços de IA
+    |
+    v
+PostgreSQL
+```
 
-## 2. Clonar o repositório
+A divisão por aplicativos Django favorece separação de responsabilidades. O frontend adota roteamento baseado em arquivos, com páginas públicas, autenticadas e administrativas agrupadas em `src/routes`.
 
-No terminal, escolha uma pasta de trabalho e execute:
+## Estrutura de diretórios
+
+```text
+Linus/
+├── .github/workflows/        # Automação de testes do backend
+├── backend/
+│   ├── core/                 # Configuração Django, URLs e exceções
+│   ├── accounts/             # Usuários, autenticação e segurança
+│   ├── audit/                # Auditoria e serviços de log
+│   ├── learning/             # Trilhas, lições e aprendizagem
+│   ├── music/                # Domínio musical
+│   ├── exercises/            # Exercícios
+│   ├── placement/            # Triagem
+│   ├── progress/             # Progresso
+│   ├── gamification/         # Gamificação
+│   ├── glossary/             # Glossário
+│   ├── ai_gateway/           # Integração de IA
+│   ├── requirements.txt      # Dependências Python
+│   └── manage.py             # CLI do Django
+├── frontend/
+│   ├── src/components/       # Componentes reutilizáveis e UI
+│   ├── src/context/          # Estado compartilhado
+│   ├── src/lib/              # Utilitários, áudio e regras auxiliares
+│   ├── src/routes/           # Rotas e páginas da aplicação
+│   ├── package.json          # Dependências e scripts Node.js
+│   └── vite.config.ts        # Configuração de build/desenvolvimento
+├── docker-compose.yml        # Orquestração local por Docker (PostgreSQL)
+└── README.md                 # Documentação principal
+```
+
+## Pré-requisitos
+
+- Git
+- Python 3.12 ou versão compatível com as dependências do backend
+- Node.js LTS e npm
+- PostgreSQL
+- Docker e Docker Compose, caso opte por executar os serviços em contêineres
+
+## Configuração local
+
+### 1. Obter o código
 
 ```bash
 git clone https://github.com/coragi-py/Linus.git
 cd Linus
+git checkout nome-da-branch
 ```
 
-Confira a branch principal disponível:
-
-```bash
-git branch -a
-```
-
-Antes de criar uma branch, atualize sua cópia local:
-
-```bash
-git checkout main
-git pull origin main
-```
-
----
-
-## 3. Trabalhar com branches
-
-Nunca desenvolva diretamente na branch `main`.
-
-Crie uma branch a partir da `main` atualizada. Use nomes curtos, em minúsculo e separados por hífen.
-
-```bash
-git checkout -b feature/nome-da-funcionalidade
-```
-
-Exemplos:
-
-```bash
-git checkout -b feature/triagem-inicial
-git checkout -b feature/piano-virtual
-git checkout -b feature/autenticacao
-git checkout -b fix/correcao-login
-git checkout -b docs/atualiza-readme
-```
-
-Envie a branch para o GitHub na primeira vez:
-
-```bash
-git push -u origin feature/nome-da-funcionalidade
-```
-
-Durante o desenvolvimento:
-
-```bash
-git status
-git add .
-git commit -m "feat: descreve a funcionalidade implementada"
-git push
-```
-
-Antes de abrir um Pull Request, atualize a branch com a `main`:
-
-```bash
-git checkout main
-git pull origin main
-git checkout feature/nome-da-funcionalidade
-git merge main
-```
-
-Resolva conflitos, execute os testes e envie a branch novamente:
-
-```bash
-git push
-```
-
-Depois, abra um Pull Request no GitHub de `feature/nome-da-funcionalidade` para `main`.
-
----
-
-## 4. Banco de dados com Docker
-
-O arquivo `docker-compose.yml` do repositório sobe um PostgreSQL local para desenvolvimento.
-
-Na raiz do projeto, execute:
-
-```bash
-docker compose up -d
-```
-
-Verifique se o contêiner está em execução:
-
-```bash
-docker compose ps
-```
-
-Veja os logs, se necessário:
-
-```bash
-docker compose logs -f
-```
-
-Para parar os serviços sem apagar os dados:
-
-```bash
-docker compose down
-```
-
-Para remover também os volumes e reiniciar o banco do zero:
-
-```bash
-docker compose down -v
-```
-
-> **Atenção:** `docker compose down -v` apaga os dados locais do PostgreSQL. Use esse comando apenas quando for necessário reiniciar o ambiente de desenvolvimento.
-
-A configuração atual do Docker Compose utiliza o banco PostgreSQL com os seguintes dados locais:
-
-```text
-Host: localhost
-Porta: 5432
-Banco: linus_db
-Usuário: linus_db_admin
-Senha: Af2612!!!
-```
-
-Essas credenciais são exclusivas do ambiente local e não devem ser usadas em produção.
-
----
-
-## 5. Configurar o backend
-
-Abra um segundo terminal e entre na pasta do backend:
+### 2. Configurar o backend
 
 ```bash
 cd backend
+python -m venv .venv
 ```
 
-### 5.1 Criar ambiente virtual
-
-#### Windows PowerShell
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-Se o PowerShell bloquear a ativação, execute uma vez no terminal:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-```
-
-Depois, tente novamente:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-#### Windows CMD
-
-```bat
-py -3.11 -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-#### Linux ou macOS
+Ative o ambiente virtual:
 
 ```bash
-python3.11 -m venv .venv
+# Linux/macOS
 source .venv/bin/activate
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
 ```
 
-Quando o ambiente virtual estiver ativo, o terminal deverá mostrar `(.venv)` no início da linha.
-
-### 5.2 Instalar dependências
-
-Com o ambiente virtual ativo:
-
-```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 5.3 Criar o arquivo `.env`
-
-Na pasta `backend`, crie um arquivo chamado `.env` usando o modelo abaixo:
-
-```env
-DJANGO_SECRET_KEY= #Chave secreta do Django
-DJANGO_DEBUG=True #Altere para False em produção
-DJANGO_ALLOWED_HOSTS= #Adicione os hosts permitidos em produção, separados por vírgula. ex: localhost
-CORS_ALLOWED_ORIGINS= #Adicione os domínios permitidos para CORS, separados por vírgula. ex: http://localhost:8080,https://meusite.com
-
-DB_ENGINE=django.db.backends.postgresql
-DB_HOST= #Insira o host do banco de dados PostgreSQL. ex: localhost
-DB_PORT= #Insira a porta do banco de dados PostgreSQL. ex: 5432
-POSTGRES_DB= #Insira o nome do banco de dados PostgreSQL. ex: linus_db
-POSTGRES_USER= #Insira o usuário do banco de dados PostgreSQL. ex: linus_db_admin
-POSTGRES_PASSWORD= #Insira a senha do banco de dados PostgreSQL. ex: SenhaSegura123!
-
-# URL de Conexão do Django (Usada pelo dj-database-url)
-DATABASE_URL= #Insira a URL de conexão do banco de dados PostgreSQL. ex: postgres://linus_db_admin:SenhaSegura123!@localhost:5432/linus_db
-
-GEMINI_API_KEY= #Inisira a chave da API do Gemini, se aplicável. ex: sua_chave_api_gemini
-GOOGLE_OAUTH2_CLIENT_ID= # Insira o client id gerado no Google Cloud Platform
-GOOGLE_OAUTH_CLIENT_SECRET_KEY= # Insira a Secret Key gerada no Google Cloud Platform
-
-# Configurações de email (Brevo)
-BREVO_SMTP_HOST=smtp-relay.brevo.com
-BREVO_SMTP_PORT=587
-BREVO_SMTP_USER= # Insira o usuário do SMTP do Brevo. ex: 123@smtp-relay.brevo.com
-BREVO_SMTP_PASSWORD= # Insira a senha do SMTP do Brevo. ex: xsmtpsib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-DEFAULT_FROM_EMAIL= # Insira o email padrão para envio de emails. ex: nao-responda@linus.app.br
-```
-
-A chave local pode ser gerada com:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(50))"
-```
-
-Não envie o arquivo `.env` para o GitHub. Ele deve permanecer listado no `.gitignore`.
-
-> A variável `GEMINI_API_KEY` é necessária apenas para testar a integração do assistente didático. Não compartilhe a chave em mensagens, commits, Pull Requests, capturas de tela ou documentos públicos.
-
-### 5.4 Conferir conexão com banco
-
-Antes de executar migrations, confirme que o PostgreSQL foi iniciado com Docker:
-
-```bash
-cd ..
-docker compose ps
-cd backend
-```
-
-Se o banco estiver ativo, prossiga para as migrations.
-
-### 5.5 Executar migrations
-
-Execute as migrations padrão e as migrations dos módulos já implementados:
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-> Execute `makemigrations` apenas quando você tiver criado ou alterado models. Para preparar o ambiente sem alterações de model, normalmente basta executar `python manage.py migrate`.
-
-Crie um usuário administrador local, se necessário:
-
-```bash
-python manage.py createsuperuser
-```
-
-### 5.6 Executar o backend
-
-```bash
-python manage.py runserver
-```
-
-O backend deverá ficar disponível em:
-
-```text
-http://127.0.0.1:8000/
-```
-
-Para executar em outra porta:
-
-```bash
-python manage.py runserver 8001
-```
-
-Para encerrar o servidor, pressione `Ctrl + C`.
-
----
-
-## 6. Configurar o frontend
-
-Abra um terceiro terminal e entre na pasta do frontend:
-
-```bash
-cd frontend
-```
-
-Instale as dependências com o arquivo de lock do projeto:
-
-```bash
-npm ci
-```
-
-Se ocorrer erro relacionado ao `package-lock.json`, use:
-
-```bash
-npm install
-```
-
-### 6.1 Criar arquivo `.env.local`
-
-Na pasta `frontend`, crie o arquivo `.env.local`:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-Use o prefixo `VITE_` apenas para variáveis que podem ser expostas ao navegador.
-
-> Nunca coloque `GEMINI_API_KEY`, `DJANGO_SECRET_KEY`, senha do banco ou qualquer segredo no `.env.local` do frontend.
-
-### 6.2 Executar o frontend
-
-```bash
-npm run dev
-```
-
-O Vite exibirá a URL local no terminal. Normalmente:
-
-```text
-http://localhost:8000/
-```
-
-Para abrir o servidor automaticamente no navegador:
-
-```bash
-npm run dev -- --open
-```
-
-Para validar o build de produção:
-
-```bash
-npm run build
-```
-
-Para executar verificações configuradas no projeto:
-
-```bash
-npm run lint
-```
-
----
-
-## 7. Ordem recomendada para iniciar o projeto
-
-Abra três terminais na raiz do repositório.
-
-### Terminal 1: PostgreSQL
-
-```bash
-docker compose up -d
-```
-
-### Terminal 2: backend
-
-```bash
-cd backend
-# Ative o ambiente virtual
-python manage.py migrate
-python manage.py runserver
-```
-
-### Terminal 3: frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Depois, abra a URL exibida pelo Vite, normalmente `http://localhost:5173/`.
-
----
-
-## 8. Fluxo da triagem antes do cadastro
-
-A triagem inicial pode ser iniciada por visitantes. Para evitar dependência de Redis no MVP, informações temporárias devem ser mantidas por sessão do Django ou por registro temporário no PostgreSQL com prazo de expiração.
-
-Regras recomendadas para implementação:
-
-- Não armazenar dados de conta antes do visitante criar uma conta.
-- Usar uma chave de sessão para identificar a triagem em andamento.
-- Associar o resultado ao usuário somente após o cadastro ser concluído.
-- Definir data de expiração para dados temporários não vinculados.
-- Remover ou anonimizar registros temporários expirados.
-
----
-
-## 9. Convenções de desenvolvimento
-
-### Commits
-
-Use mensagens objetivas no padrão abaixo:
-
-```text
-feat: adiciona triagem inicial
-fix: corrige mapeamento de teclas do piano
-docs: atualiza guia de desenvolvimento
-refactor: reorganiza serviços do módulo de exercícios
-test: adiciona testes de autenticação
-chore: atualiza dependências
-```
-
-### Pull Requests
-
-Antes de solicitar revisão:
-
-- Atualize a branch com a `main`.
-- Execute migrations, quando houver alteração de models.
-- Execute o backend e valide os endpoints alterados.
-- Execute `npm run lint` no frontend.
-- Execute `npm run build` no frontend.
-- Não envie arquivos `.env`, `.venv`, `node_modules`, banco local ou credenciais.
-- Descreva no Pull Request o que foi alterado e como testar.
-
-Modelo de descrição:
-
-```md
-## O que foi feito
-
--
-
-## Como testar
-
-1.
-2.
-
-## Observações
-
--
-```
-
----
-
-## 10. Problemas frequentes
-
-### Docker não inicia
-
-Confirme que o Docker Desktop está aberto e em execução:
-
-```bash
-docker info
-```
-
-Se o comando falhar, abra ou reinicie o Docker Desktop.
-
-### Porta 5432 já está em uso
-
-Provavelmente existe outro PostgreSQL em execução na máquina. Pare o serviço que está usando a porta ou altere a porta publicada no `docker-compose.yml` e atualize `DB_PORT` no `.env` do backend.
-
-### Erro de conexão do Django com o banco
-
-Confirme:
-
-```bash
-docker compose ps
-```
-
-Verifique se os valores `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` e `DB_PORT` no `.env` correspondem ao `docker-compose.yml`.
-
-### Erro `ModuleNotFoundError` no backend
-
-Confirme que o ambiente virtual está ativo e reinstale as dependências:
+Instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Erro `npm` ou dependência ausente no frontend
-
-Remova a pasta `node_modules` e instale novamente:
+Crie o arquivo de ambiente a partir do exemplo:
 
 ```bash
-npm ci
+cp .env.example .env
 ```
 
 No Windows PowerShell:
 
 ```powershell
-Remove-Item -Recurse -Force node_modules
+Copy-Item .env.example .env
+```
+
+Preencha as variáveis com credenciais **locais e não versionadas**. Consulte [`backend/README.md`](backend/README.md) para a descrição dos grupos de configuração.
+
+Execute as migrações e inicie a API:
+
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+### 3. Configurar o frontend
+
+Em outro terminal:
+
+```bash
+cd frontend
 npm ci
+npm run dev
 ```
 
-### Frontend não consegue acessar o backend
+Use `npm install` apenas se a instalação reprodutível por `npm ci` não for adequada ao seu ambiente.
 
-Confirme que o backend está em execução em `http://127.0.0.1:8000/` e que o arquivo `frontend/.env.local` contém:
+A configuração anexada indica desenvolvimento local com frontend em `http://localhost:8080`; confirme a porta efetiva exibida pelo Vite e mantenha CORS e `FRONTEND_URL` coerentes.
 
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
+### 4. Docker Compose
 
-Também confirme a configuração de CORS no Django antes de integrar os dois servidores locais.
-
-### Migration não é encontrada
-
-Execute:
+O repositório possui `docker-compose.yml`. Revise os serviços, portas, volumes e variáveis antes de iniciar, pois a configuração pode ser específica ao ambiente do projeto:
 
 ```bash
-python manage.py makemigrations
-python manage.py migrate
+docker compose up --build
 ```
 
-Se a migration já existir, execute apenas:
+## Variáveis de ambiente
+
+Nunca versione o arquivo `.env`. O exemplo deve conter somente nomes de variáveis, valores fictícios e comentários. Em linhas gerais, o backend utiliza grupos para:
+
+| Grupo                | Finalidade                                                 |
+| -------------------- | ---------------------------------------------------------- |
+| Django               | Chave secreta, depuração e hosts autorizados               |
+| CORS e frontend      | Origens permitidas e URL pública do frontend               |
+| Banco de dados       | Driver, host, porta, base, usuário, senha e URL de conexão |
+| Integrações externas | Chaves de IA e OAuth                                       |
+| E-mail               | Servidor SMTP, porta, conta emissora e credencial SMTP     |
+
+Se uma chave, senha, token OAuth, credencial SMTP ou URL de banco com senha foi exposta fora do ambiente local, **revogue e gere novos valores** antes de qualquer publicação ou entrega.
+
+## Segurança e conformidade
+
+Módulo dedicado de contas, hasher customizado, serviço de segurança, recuperação por e-mail, módulo de auditoria e testes em diversos aplicativos.
+
+A validação cobre:
+
+- Algoritmo de hash, custo, salt e armazenamento de senhas.
+- Fluxo de login, expiração de sessão ou token, logout, 2FA e mitigação contra força bruta.
+- Geração, expiração, uso único e auditoria de tokens de recuperação de senha.
+- HTTPS/TLS em produção, redirecionamento HTTP → HTTPS e cabeçalhos de segurança.
+- Proteção de segredos, dados em repouso e chaves criptográficas.
+- Inventário de dados pessoais, finalidade, consentimento, revogação e direitos do titular conforme LGPD.
+- Integridade, retenção e análise dos logs de auditoria.
+
+Consulte os READMEs de backend e frontend para o inventário de evidências.
+
+## Qualidade e testes
+
+A árvore do projeto contém testes em `accounts`, `audit`, `glossary`, `music` e `placement`, além de workflow em `.github/workflows/testes-backend.yml`. Antes da entrega, execute ao menos:
 
 ```bash
-python manage.py migrate
+cd backend
+python manage.py test
 ```
 
----
+Também valide fluxos críticos manualmente: registro, login, logout, recuperação de senha, permissões administrativas, consulta de dados pessoais, operação de trilhas/lições e tratamento de falhas.
 
-## 11. Segurança mínima
+## Documentação complementar
 
-- Nunca envie arquivos `.env` ao repositório.
-- Nunca registre chaves da Gemini API em commits, issues ou Pull Requests.
-- Use somente credenciais locais de desenvolvimento no Docker Compose.
-- Não use senhas pessoais como senha local do banco.
-- Revise `git status` antes de cada commit.
-- Caso uma chave seja enviada acidentalmente, revogue-a imediatamente no provedor e gere outra chave.
+- [`backend/README.md`](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
+- [`frontend/README.md`](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
 
----
+## Licença
 
-## 12. Encerrar o ambiente
-
-Para encerrar os servidores frontend e backend, pressione `Ctrl + C` nos respectivos terminais.
-
-Para parar o PostgreSQL local:
-
-```bash
-docker compose down
-```
-
-Os dados persistem no volume Docker até que seja executado:
-
-```bash
-docker compose down -v
-```
+Consulte o arquivo [`LICENSE`](LICENSE) do repositório.

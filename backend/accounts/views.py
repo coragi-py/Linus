@@ -410,11 +410,6 @@ class ChangePasswordView(APIView):
         AuditService.log_event(request, user, "PASSWORD_CHANGED_SUCCESSFULLY")
         return Response({"message": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)
     
-from django.utils import timezone
-from datetime import timedelta
-
-from django.utils import timezone
-from datetime import timedelta
 
 class AdminSystemMetricsView(APIView):
     permission_classes = [IsAuthenticated]
