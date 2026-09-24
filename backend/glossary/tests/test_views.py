@@ -1,10 +1,15 @@
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
+from Django.contrib.auth.models import User
 from rest_framework import status
 from django.urls import reverse
 from glossary.models import Glossario
 
 class GlossarioViewSetTests(APITestCase):
     def setUp(self):
+
+        self.user = User.objects.create_user(username="testuser", password="testpassword")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
         # Criação de massa de dados focada em teoria musical
         self.termo_a = Glossario.objects.create(
             termo="Acorde",
