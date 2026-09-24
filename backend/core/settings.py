@@ -176,6 +176,21 @@ EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
 
+# Testes
+if 'test' in sys.argv:
+    # Mantém o SQLite em memória
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+    
+    # Desativa o Throttling e Rate Limiting substituindo o cache real por um cache fantasma
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        }
+    }
+
 # Integração Google OAuth 2.0
 GOOGLE_OAUTH2_CLIENT_ID = os.environ.get("GOOGLE_OAUTH2_CLIENT_ID", "")
 
