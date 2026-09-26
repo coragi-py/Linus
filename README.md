@@ -259,6 +259,7 @@ Os itens abaixo são cenários frequentes de configuração local e **não** um 
 
 - [`backend/README.md`](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
 - [`frontend/README.md`](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
+- [Documentação da API](backend/docs/API.md): métodos, payloads e respostas HTTP.
 
 ## 9. Licença
 
