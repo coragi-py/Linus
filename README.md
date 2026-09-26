@@ -9,7 +9,30 @@ O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, g
 - **Frontend:** aplicação TypeScript com Vite e TanStack Router, responsável pelas telas, interação, validações de experiência e consumo da API.
 - **Backend:** API Django modular, responsável por identidade, regras de domínio, persistência, auditoria e serviços de segurança.
 
-## Funcionalidades mapeadas
+## Índice
+
+- [Linus](#linus)
+  - [Visão geral](#visão-geral)
+  - [Índice](#índice)
+  - [1. Funcionalidades mapeadas](#1-funcionalidades-mapeadas)
+  - [2. Arquitetura](#2-arquitetura)
+  - [Estrutura de diretórios](#estrutura-de-diretórios)
+  - [3. Pré-requisitos](#3-pré-requisitos)
+  - [4. Configuração local](#4-configuração-local)
+    - [1. Obter o código](#1-obter-o-código)
+    - [2. Preparar as variáveis de ambiente](#2-preparar-as-variáveis-de-ambiente)
+    - [3. Iniciar os serviços do Docker](#3-iniciar-os-serviços-do-docker)
+    - [4. Configurar e iniciar o backend](#4-configurar-e-iniciar-o-backend)
+    - [5. Configurar e iniciar o frontend](#5-configurar-e-iniciar-o-frontend)
+    - [6. Parar ou limpar o ambiente](#6-parar-ou-limpar-o-ambiente)
+  - [5. Segurança e conformidade](#5-segurança-e-conformidade)
+  - [6. Qualidade e testes](#6-qualidade-e-testes)
+  - [7. Erros e soluções de problemas conhecidos](#7-erros-e-soluções-de-problemas-conhecidos)
+  - [8. Documentação complementar](#8-documentação-complementar)
+  - [9. Licença](#9-licença)
+  - [10. Equipe do projeto](#10-equipe-do-projeto)
+
+## 1. Funcionalidades mapeadas
 
 | Área                 | Responsabilidade                                                              |
 | -------------------- | ----------------------------------------------------------------------------- |
@@ -25,7 +48,7 @@ O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, g
 | Administração        | Gestão de conteúdo e de parâmetros do sistema                                 |
 | Assistente de IA     | Componente de interface e módulo `ai_gateway` reservado para integração de IA |
 
-## Arquitetura
+## 2. Arquitetura
 
 ```text
 Navegador
@@ -83,7 +106,7 @@ Linus/
 └── README.md                 # Documentação principal
 ```
 
-## Pré-requisitos
+## 3. Pré-requisitos
 
 - Git
 - Python 3.12 ou versão compatível com as dependências do backend
@@ -91,7 +114,7 @@ Linus/
 - PostgreSQL
 - Docker e Docker Compose, caso opte por executar os serviços em contêineres
 
-## Configuração local
+## 4. Configuração local
 
 ### 1. Obter o código
 
@@ -101,7 +124,38 @@ cd Linus
 git checkout nome-da-branch
 ```
 
-### 2. Configurar o backend
+### 2. Preparar as variáveis de ambiente
+
+A partir da raiz do projeto, copie o exemplo do backend e substitua os placeholders por valores locais. Não versione `.env`.
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+No PowerShell:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+### 3. Iniciar os serviços do Docker
+
+**Antes de executar `migrate`**, na raiz do repositório:
+
+```bash
+docker compose up -d
+```
+
+O `-d` deixa os serviços em segundo plano. Confira se subiram e, se necessário, examine os logs:
+
+```bash
+docker compose ps
+docker compose logs --tail=100
+```
+
+### 4. Configurar e iniciar o backend
+
+Em um terminal, partindo da raiz:
 
 ```bash
 cd backend
@@ -118,36 +172,17 @@ source .venv/bin/activate
 .venv\Scripts\Activate.ps1
 ```
 
-Instale as dependências:
+Instale as dependências e aplique as migrações **após o banco estar pronto**:
 
 ```bash
 pip install -r requirements.txt
-```
-
-Crie o arquivo de ambiente a partir do exemplo:
-
-```bash
-cp .env.example .env
-```
-
-No Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Preencha as variáveis com credenciais **locais e não versionadas**. Consulte [`backend/README.md`](backend/README.md) para a descrição dos grupos de configuração.
-
-Execute as migrações e inicie a API:
-
-```bash
 python manage.py migrate
 python manage.py runserver
 ```
 
-### 3. Configurar o frontend
+### 5. Configurar e iniciar o frontend
 
-Em outro terminal:
+Em outro terminal partindo da raiz:
 
 ```bash
 cd frontend
@@ -157,31 +192,25 @@ npm run dev
 
 Use `npm install` apenas se a instalação reprodutível por `npm ci` não for adequada ao seu ambiente.
 
-A configuração anexada indica desenvolvimento local com frontend em `http://localhost:8080`; confirme a porta efetiva exibida pelo Vite e mantenha CORS e `FRONTEND_URL` coerentes.
+### 6. Parar ou limpar o ambiente
 
-### 4. Docker Compose
-
-O repositório possui `docker-compose.yml`. Revise os serviços, portas, volumes e variáveis antes de iniciar, pois a configuração pode ser específica ao ambiente do projeto:
+Para interromper os contêineres sem descartar os dados persistidos nos volumes:
 
 ```bash
-docker compose up --build
+docker compose down
 ```
 
-## Variáveis de ambiente
+**Somente se precisar reiniciar o ambiente do zero**, na raiz do projeto:
 
-Nunca versione o arquivo `.env`. O exemplo deve conter somente nomes de variáveis, valores fictícios e comentários. Em linhas gerais, o backend utiliza grupos para:
+```bash
+docker compose down -v
+```
 
-| Grupo                | Finalidade                                                 |
-| -------------------- | ---------------------------------------------------------- |
-| Django               | Chave secreta, depuração e hosts autorizados               |
-| CORS e frontend      | Origens permitidas e URL pública do frontend               |
-| Banco de dados       | Driver, host, porta, base, usuário, senha e URL de conexão |
-| Integrações externas | Chaves de IA e OAuth                                       |
-| E-mail               | Servidor SMTP, porta, conta emissora e credencial SMTP     |
+**Atenção:** `down -v` remove também os volumes gerenciados pelo Compose, incluindo dados persistidos do PostgreSQL caso o banco use um volume do projeto. Isso pode apagar contas, conteúdo e histórico local de forma irrecuperável sem backup. Não execute em ambiente com dados que você precisa preservar. O comando não substitui backup e não apaga automaticamente arquivos externos ou volumes declarados como externos. Para retomar do zero, execute `docker compose up -d` e, após o banco ficar pronto, `python manage.py migrate` novamente.
 
-Se uma chave, senha, token OAuth, credencial SMTP ou URL de banco com senha foi exposta fora do ambiente local, **revogue e gere novos valores** antes de qualquer publicação ou entrega.
+---
 
-## Segurança e conformidade
+## 5. Segurança e conformidade
 
 Módulo dedicado de contas, hasher customizado, serviço de segurança, recuperação por e-mail, módulo de auditoria e testes em diversos aplicativos.
 
@@ -197,7 +226,7 @@ A validação cobre:
 
 Consulte os READMEs de backend e frontend para o inventário de evidências.
 
-## Qualidade e testes
+## 6. Qualidade e testes
 
 A árvore do projeto contém testes em `accounts`, `audit`, `glossary`, `music` e `placement`, além de workflow em `.github/workflows/testes-backend.yml`. Antes da entrega, execute ao menos:
 
@@ -206,13 +235,51 @@ cd backend
 python manage.py test
 ```
 
-Também valide fluxos críticos manualmente: registro, login, logout, recuperação de senha, permissões administrativas, consulta de dados pessoais, operação de trilhas/lições e tratamento de falhas.
+Valide também fluxos críticos manualmente: registro, login, logout, recuperação de senha, permissões administrativas, consulta de dados pessoais, operação de trilhas/lições e tratamento de falhas.
 
-## Documentação complementar
+## 7. Erros e soluções de problemas conhecidos
+
+Os itens abaixo são cenários frequentes de configuração local e **não** um registro de bugs confirmados no projeto. Antes de alterar código, confira `docker compose ps`, os logs, as portas e as variáveis de ambiente.
+
+| Sintoma                                                            | Causa possível                                                                       | Verificação e solução                                                                                                                                                                              |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connection refused` ou `could not connect to server` no `migrate` | Banco parado, ainda iniciando, host/porta incorretos                                 | Rode `docker compose up -d`, confira `docker compose ps` e `docker compose logs --tail=100`; aguarde o banco e revise `DB_HOST`, `DB_PORT` e `DATABASE_URL` conforme Django local ou em contêiner. |
+| `password authentication failed` no PostgreSQL                     | Senha, usuário ou URL divergentes; volume antigo inicializado com outras credenciais | Compare `.env`, `DATABASE_URL` e configuração do Compose. Se houver dados importantes, preserve-os e corrija credenciais sem apagar volumes; `down -v` só em ambiente descartável.                 |
+| `port is already allocated`                                        | Porta já ocupada por outro serviço                                                   | Identifique o processo/contêiner na porta, pare-o ou mude o mapeamento no Compose e atualize `.env` correspondente.                                                                                |
+| `no such table` ou tabela ausente                                  | Migrações não aplicadas na mesma base acessada pela API                              | Confirme que banco está pronto, revise a URL e execute `python manage.py migrate` no ambiente que executa o backend.                                                                               |
+| Erro de CORS no navegador                                          | `CORS_ALLOWED_ORIGINS` não corresponde à origem real do frontend                     | Confira esquema (`http`/`https`), host e porta informados pelo Vite; atualize a variável e reinicie o backend.                                                                                     |
+| Frontend não acessa a API                                          | URL incorreta, backend não iniciado ou porta divergente                              | Confirme `runserver`, endpoint requisitado e configuração de URL usada no frontend; use DevTools para identificar a requisição que falhou.                                                         |
+| Erro de configuração do Django ou `SECRET_KEY` ausente             | `.env` não criado ou não carregado                                                   | Confirme a localização de `backend/.env`, variáveis exigidas em `core/settings.py` e reinicie o processo. Não coloque a chave no Git.                                                              |
+| Falha de envio de e-mail                                           | SMTP não configurado, credencial inválida ou serviço indisponível                    | Confira as variáveis `BREVO_SMTP_*`, remetente autorizado e logs do backend; nunca imprima senhas ou tokens completos.                                                                             |
+| `npm ci` falha                                                     | Node/npm incompatíveis ou `package-lock.json` fora de sincronia                      | Confira as versões esperadas pelo `package.json`, tente novamente com ambiente limpo e ajuste lockfile somente se necessário e intencional.                                                        |
+| PowerShell bloqueia ativação do `.venv`                            | Política local de execução de scripts                                                | Use um terminal autorizado ou chame diretamente `.venv\Scripts\python.exe manage.py migrate`; não altere políticas globais sem necessidade.                                                        |
+| Dados desapareceram depois de reiniciar                            | Execução anterior de `docker compose down -v` ou ausência de volume persistente      | Verifique volumes em `docker-compose.yml`; restaure backup, se existir. `down -v` foi projetado para remoção de volumes do projeto.                                                                |
+
+## 8. Documentação complementar
 
 - [`backend/README.md`](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
 - [`frontend/README.md`](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
 
-## Licença
+## 9. Licença
 
 Consulte o arquivo [`LICENSE`](LICENSE) do repositório.
+
+## 10. Equipe do projeto
+
+**Alunos:**
+
+- Anny Gabriely Souza do Nascimento
+- Antonio Luiz Lins Neto
+- Fábio Yuuki Saruwataru
+
+**Orientador:**
+
+- Prof. Leonardo Cavalcante Alvino
+
+**Co-orientador:**
+
+- Prof. Alessandro da Silva Horas
+
+**Instituição:**
+
+- UMC - Universidade de Mogi das Cruzes (2026)
