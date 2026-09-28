@@ -1,8 +1,8 @@
 # Esse arquivo contém os modelos de dados relacionados à triagem de usuários, incluindo sessões de triagem, perguntas e opções de resposta. Ele define a estrutura do banco de dados para armazenar informações sobre as sessões de triagem, as respostas dos usuários e os níveis atribuídos com base nas respostas fornecidas.
 
 import uuid
+from django.conf import settings
 from django.db import models
-from accounts.models import Usuario
 
 class SessaoTriagem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -18,7 +18,7 @@ class SessaoTriagem(models.Model):
 
 class TriagemInicial(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='triagens')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='triagens')
     sessao_triagem = models.ForeignKey(SessaoTriagem, on_delete=models.SET_NULL, null=True, blank=True)
     respostas = models.JSONField()
     nivel_atribuido = models.CharField(max_length=50)
