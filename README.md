@@ -4,7 +4,7 @@
 
 ## Visão geral
 
-O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, glossário, triagem de nível, acompanhamento de progresso, gamificação e áreas administrativas. O projeto foi estruturado em dois componentes principais:
+O Linus é uma plataforma de aprendizagem de teoria musical, trilhas e lições, prática, glossário, triagem de nível, acompanhamento de progresso, gamificação e áreas administrativas. O projeto foi estruturado em dois componentes principais:
 
 - **Frontend:** aplicação TypeScript com Vite e TanStack Router, responsável pelas telas, interação, validações de experiência e consumo da API.
 - **Backend:** API Django modular, responsável por identidade, regras de domínio, persistência, auditoria e serviços de segurança.
@@ -39,9 +39,9 @@ O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, g
 | Contas               | Cadastro, autenticação, recuperação de senha e gestão do perfil do usuário    |
 | Aprendizagem         | Trilhas, lições e conteúdos de aprendizagem                                   |
 | Exercícios e prática | Execução de atividades e recursos de prática musical                          |
-| Música               | Estruturas e regras do domínio musical                                        |
+| Música               | Gravação de músicas personalizadas através da tela de playground              |
 | Glossário            | Consulta de termos e conceitos musicais                                       |
-| Triagem              | Identificação ou classificação inicial do usuário                             |
+| Triagem              | Identificação e classificação inicial do usuário                             |
 | Progresso            | Acompanhamento da evolução do estudante                                       |
 | Gamificação          | Mecânicas de progresso, recompensas ou indicadores                            |
 | Auditoria            | Registro de eventos relevantes do sistema                                     |
@@ -257,8 +257,8 @@ Os itens abaixo são cenários frequentes de configuração local e **não** um 
 
 ## 8. Documentação complementar
 
-- [DOCUMENTAÇÃO FRONTEND](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
-- [DOCUMENTAÇÃO BACKEND](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
+- [Documentação Frontend](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
+- [Documentação Backend](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
 - [Documentação da API](backend/docs/API.md): métodos, payloads e respostas HTTP.
 
 ## 9. Licença
