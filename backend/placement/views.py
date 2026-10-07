@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from .models import PerguntaTriagem, OpcaoTriagem, SessaoTriagem
 from .serializers import PerguntaTriagemSerializer
+from .services import TriagemService, RespostasVaziasException, PerguntasNaoEncontradasException
 
 # ViewSet para o CRUD de Perguntas da Triagem
 class PerguntaTriagemViewSet(viewsets.ModelViewSet):
