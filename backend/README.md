@@ -114,78 +114,25 @@ Há diretórios de testes em `accounts`, `audit`, `glossary`, `music` e `placeme
 | `ai_gateway`   | `models.py`, `views.py`                                                         | Camada de integração com IA                                                 |
 | `common`       | `models.py`, `views.py`                                                         | Componentes compartilhados ou base comum                                    |
 
+---
+
 ## Mapeamento de endpoints
 
-A API utiliza o prefixo geral `/api/v1/`. Os endpoints abaixo foram informados para a branch atual. Métodos HTTP, payloads, respostas e permissões exatas devem ser confirmados nas respectivas views e serializers; quando não foram fornecidos, aparecem como “a confirmar”.
+A API é organizada sob o prefixo `/api/v1/`. O roteamento central fica em
+`core/urls.py`; cada módulo define suas rotas em seu próprio `urls.py`.
 
-### Rotas raiz
+| Prefixo              | Módulo      | Responsabilidade                                          |
+| -------------------- | ----------- | --------------------------------------------------------- |
+| `/api/v1/auth/`      | `accounts`  | Contas, autenticação, perfil, privacidade e administração |
+| `/api/v1/placement/` | `placement` | Perguntas e submissão da triagem                          |
+| `/api/v1/learning/`  | `learning`  | Aprendizagem                                              |
+| `/api/v1/glossary/`  | `glossary`  | Glossário                                                 |
+| `/api/v1/music/`     | `music`     | Músicas e prática                                         |
 
-| Prefixo              | Arquivo incluído                 | Responsabilidade                                          |
-| -------------------- | -------------------------------- | --------------------------------------------------------- |
-| `/admin/`            | `django.contrib.admin.site.urls` | Administração nativa do Django                            |
-| `/api/v1/auth/`      | `accounts.urls`                  | Contas, autenticação, perfil, privacidade e administração |
-| `/api/v1/placement/` | `placement.urls`                 | Triagem e nivelamento                                     |
-| `/api/v1/learning/`  | `learning.urls`                  | Aprendizagem                                              |
-| `/api/v1/glossary/`  | `glossary.urls`                  | Glossário                                                 |
-| `/api/v1/music/`     | `music.urls`                     | Músicas                                                   |
+Consulte a [documentação completa da API](docs/API.md) para métodos HTTP,
+autorização, campos de requisição, respostas e exemplos de erros.
 
-### Accounts e autenticação
-
-Base: `/api/v1/auth/`, definida em `backend/accounts/urls.py`.
-
-| Endpoint                                  | View                       | Método    | Autenticação/permissão                                              | Finalidade                                 |
-| ----------------------------------------- | -------------------------- | --------- | ------------------------------------------------------------------- | ------------------------------------------ |
-| `/api/v1/auth/register/`                  | `RegisterView`             | POST      | Público, conforme implementação                                     | Cadastro de usuário                        |
-| `/api/v1/auth/login/`                     | `LoginView`                | POST      | Público; credencial primária                                        | Login local                                |
-| `/api/v1/auth/google/`                    | `GoogleAuthView`           | POST      | Público; OAuth Google                                               | Login/associação via Google OAuth          |
-| `/api/v1/auth/verify-2fa/`                | `Verify2FAView`            | POST      | Estado de autenticação pendente ou usuário autenticado, a confirmar | Validação do segundo fator                 |
-| `/api/v1/auth/password-reset/`            | `PasswordResetRequestView` | POST      | Público                                                             | Solicitação de redefinição de senha        |
-| `/api/v1/auth/password-reset/confirm/`    | `PasswordResetConfirmView` | POST      | Token de recuperação, a confirmar                                   | Confirmação da nova senha                  |
-| `/api/v1/auth/logout/`                    | `LogoutView`               | POST      | Usuário autenticado, a confirmar                                    | Encerramento/invalidação da sessão         |
-| `/api/v1/auth/privacy/data/`              | `UserPrivacyDataView`      | GET       | Usuário autenticado; titular dos dados                              | Consulta dos dados pessoais                |
-| `/api/v1/auth/privacy/revoke-consent/`    | `RevokeConsentView`        | POST      | Usuário autenticado                                                 | Revogação de consentimento                 |
-| `/api/v1/auth/privacy/delete-account/`    | `DeleteAccountView`        | DELETE    | Usuário autenticado; confirmação recomendada                        | Exclusão da conta/dados, conforme política |
-| `/api/v1/auth/profile/update/`            | `UpdateProfileView`        | PUT       | Usuário autenticado                                                 | Atualização do perfil                      |
-| `/api/v1/auth/password/change/`           | `ChangePasswordView`       | PUT       | Usuário autenticado                                                 | Alteração da senha                         |
-| `/api/v1/auth/admin/metrics/`             | `AdminSystemMetricsView`   | GET       | Administrador                                                       | Métricas administrativas do sistema        |
-| `/api/v1/auth/admin/users/`               | `AdminSystemUsersView`     | GET/PATCH | Administrador                                                       | Listagem de usuários                       |
-| `/api/v1/auth/admin/users/<str:user_id>/` | `AdminSystemUsersView`     | GET/PATCH | Administrador                                                       | Consulta/gestão de usuário específico      |
-
-### Placement
-
-Base: `/api/v1/placement/`, definida em `backend/placement/urls.py`.
-
-| Endpoint                       | View             | Método | Autenticação/permissão | Finalidade                  |
-| ------------------------------ | ---------------- | ------ | ---------------------- | --------------------------- |
-| `/api/v1/placement/questions/` | `TriagemAPIView` | GET    | Any                    | Obter perguntas de triagem  |
-| `/api/v1/placement/submit/`    | `TriagemAPIView` | POST   | Any                    | Enviar respostas de triagem |
-
-### Glossário
-
-Base: `/api/v1/glossary/`, definida em `backend/glossary/urls.py`.
-
-| Endpoint base              | ViewSet            | Método/ação               | Autenticação/permissão | Finalidade                             |
-| -------------------------- | ------------------ | ------------------------- | ---------------------- | -------------------------------------- |
-| `/api/v1/glossary/`        | `GlossarioViewSet` | Padrão do `DefaultRouter` | IsAuthenticated        | Operações do glossário                 |
-| `/api/v1/glossary/termos/` | `GlossarioViewSet` | Padrão do `DefaultRouter` | IsAuthenticated        | Operações de termos para administração |
-
-O arquivo registra o mesmo `GlossarioViewSet` em `termos` e na raiz do router. Confirme se essa duplicidade é intencional e se as permissões diferenciam a tela pública da área administrativa. O comentário no código menciona chamadas administrativas em `/api/v1/glossary/termos` e chamadas públicas em `/api/v1/glossary`.
-
-### Música
-
-Base: `/api/v1/music/`, definida em `backend/music/urls.py`.
-
-| Endpoint base            | ViewSet         | Método/ação               | Autenticação/permissão | Finalidade              |
-| ------------------------ | --------------- | ------------------------- | ---------------------- | ----------------------- |
-| `/api/v1/music/musicas/` | `MusicaViewSet` | Padrão do `DefaultRouter` | IsAuthenticated        | Operações sobre músicas |
-
-### Learning
-
-O `core/urls.py` inclui `learning.urls` em `/api/v1/learning/`, e a árvore confirma `backend/learning/urls.py`. Os endpoints específicos ainda não foram informados.
-
-| Prefixo             | Arquivo            | Endpoints     | Situação      |
-| ------------------- | ------------------ | ------------- | ------------- |
-| `/api/v1/learning/` | `learning/urls.py` | A implementar | A implementar |
+---
 
 ## Dependências
 
@@ -212,8 +159,8 @@ pip freeze
 
 ### Processos de tratamento
 
-| Processo                                                       | Finalidade                                                                                                                                             | Dados pessoais utilizados                                                                                                                                                | Base legal informada                                | Compartilhamento                                              | Medidas de segurança informadas                                                                                               |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Processo                                                       | Finalidade                                                                                                                                             | Dados pessoais utilizados                                                                                                | Base legal informada                                | Compartilhamento                                              | Medidas de segurança informadas                                                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Gestão de Contas e Autenticação (login local e Google OAuth)   | Identificar a pessoa usuária, permitir acesso à conta, enviar comunicações de segurança, incluindo 2FA e redefinição de senha, e gerenciar credenciais | Nome completo, e-mail e ano de nascimento                                                                                | Execução de contrato                                | Brevo, para e-mails transacionais, e Google Cloud, para OAuth | HTTPS, controle de acesso por tokens JWT e validação de perfil via ORM do Django                                              |
 | Acompanhamento Didático, Progresso e Prática Musical           | Salvar avanços nas trilhas, contabilizar erros/acertos para recomendação, registrar streaks, conceder badges e salvar notas gravadas no piano virtual  | Respostas de nivelamento, histórico de lições, taxa de acerto/erro, dias de acesso e sequências de notas musicais salvas | Execução de contrato                                | Nenhum; processamento pedagógico interno no backend           | Restrição de endpoints e consultas parametrizadas, validando acesso somente ao próprio progresso                              |
 | Assistente Didático Inteligente (Google Gemini API)            | Processar dúvidas textuais e retornar explicações e apoio didático restritos à teoria musical abordada                                                 | Conteúdo textual dos prompts enviados no chat                                                                            | Execução de contrato                                | Google Cloud, por meio da Google Gemini API                   | Prompts limitados por rate limit e instruções de sistema que restringem as respostas ao escopo definido                       |
