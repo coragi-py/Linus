@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { createAvatar } from "@dicebear/core";
+import { bottts, avataaars } from "@dicebear/collection";
 import { Link, useRouterState, Navigate } from "@tanstack/react-router";
 import { Flame, LogOut, Sparkles, LogIn, UserCircle, Settings } from "lucide-react";
 import { LinusLogo } from "./Logo";
@@ -32,6 +34,57 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { state, ready, logout } = useLinus();
   const [aiOpen, setAiOpen] = useState(false);
 
+  const [avatarOptions, setAvatarOptions] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      // Só busca o avatar se o usuário estiver logado
+      if (!state.loggedIn) return; 
+      
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+        
+        const response = await fetch("http://localhost:8000/api/v1/auth/me/", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.avatar_options && Object.keys(data.avatar_options).length > 0) {
+            setAvatarOptions(data.avatar_options);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao buscar avatar", error);
+      }
+    };
+    fetchAvatar();
+  }, [state.loggedIn]); 
+
+  const avatarUri = useMemo(() => {
+    try {
+      const options = avatarOptions || { seed: state.name || 'linus', collection: 'bottts' }; 
+      const selectedCollection = options.collection === 'avataaars' ? avataaars : bottts;
+
+      const avatar = createAvatar(selectedCollection, {
+        ...options,
+        // Garantimos que a imagem pequena obedeça à mesma regra de esconder óculos
+        accessories: options.accessories?.[0] === 'none' ? [] : options.accessories,
+        accessoriesProbability: options.accessories?.[0] === 'none' ? 0 : 100,
+        size: 48,
+        radius: 50,
+        backgroundColor: ['e2e8f0']
+      } as any);
+      
+      return avatar.toDataUri();
+    } catch (error) {
+      console.error("Erro ao gerar avatar no Header:", error);
+      const fallbackAvatar = createAvatar(bottts, { seed: 'erro', size: 32, backgroundColor: ['e2e8f0'] });
+      return fallbackAvatar.toDataUri();
+    }
+  }, [avatarOptions, state.name]);
+  
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // 1. CONTROLE DE HIDRATAÇÃO
@@ -124,7 +177,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4">
           <Link to="/painel" className="focus-ring flex items-center gap-2 rounded-lg">
             <span className="text-primary">
               <LinusLogo size={38} />
@@ -181,7 +234,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {state.name ? state.name.split(" ")[0] : "Usuário"}
                     </span>
                   </div>
-                  <UserCircle className="size-8 text-primary" strokeWidth={1.5} />
+                  <img 
+                    src={avatarUri} 
+                    alt="Avatar" 
+                    className="size-16 rounded-full border border-primary/20 bg-background shadow-sm" 
+                  />
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-56 font-sans">
