@@ -1,3 +1,4 @@
+// Adicionando lógica das opções selecionaveis que compõe o avatar, por Anny em 12/10.
 import { useState, useMemo } from "react";
 import { createAvatar } from "@dicebear/core";
 import { avataaars } from "@dicebear/collection"; 
@@ -14,7 +15,7 @@ type AvatarOptions = {
 export function Avatar() {
   const [seed] = useState<string>('linus');
   const [options, setOptions] = useState<AvatarOptions>({
-    skinColor: ['ffdbb4'], // Hexadecimais oficiais do DiceBear restaurados
+    skinColor: ['ffdbb4'], 
     hairColor: ['2c1b18'],
     top: ['shortCurly'], 
     accessories: ['none'],
@@ -29,7 +30,6 @@ export function Avatar() {
         skinColor: options.skinColor,
         hairColor: options.hairColor,
         top: options.top,
-        // Lógica corrigida para os acessórios funcionarem (se for 'none', a chance de ter óculos é 0)
         accessories: options.accessories[0] === 'none' ? [] : options.accessories,
         accessoriesProbability: options.accessories[0] === 'none' ? 0 : 100,
         mouth: options.mouth,

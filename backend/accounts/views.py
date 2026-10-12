@@ -516,7 +516,7 @@ class AdminSystemUsersView(APIView):
             return Response({"error": f"Erro interno ao atualizar: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated] # Garante que apenas utilizadores logados acedam
+    permission_classes = [IsAuthenticated] 
 
     #Atualiza o utilizador associado a sessão
     def get_object(self):

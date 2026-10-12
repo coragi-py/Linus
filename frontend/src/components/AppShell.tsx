@@ -1,3 +1,4 @@
+// Adicionando avatar escolhido na barra superior e alterando o "Usuário" para "Aluno", por Anny em 12/10.
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { createAvatar } from "@dicebear/core";
 import { bottts, avataaars } from "@dicebear/collection";
@@ -228,7 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger className="focus-ring flex items-center gap-2 rounded-lg p-1.5 outline-none transition-colors hover:bg-muted">
                   <div className="hidden flex-col items-end md:flex">
                     <span className="text-[10px] font-bold uppercase text-primary/70">
-                      {ROLE_LABEL?.[currentRole] || currentRole.replace("-", " ")}
+                      {currentRole === "usuario" ? "ALUNO" : (ROLE_LABEL?.[currentRole] || currentRole.replace("-", " "))}
                     </span>
                     <span className="text-xs font-bold leading-tight truncate max-w-[120px]">
                       {state.name ? state.name.split(" ")[0] : "Usuário"}
