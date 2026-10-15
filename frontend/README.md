@@ -1,4 +1,4 @@
-# Frontend — Linus
+# Frontend — Linus 
 
 > Interface web do Linus, construída em TypeScript e organizada por rotas, componentes reutilizáveis, contexto de aplicação e recursos voltados ao aprendizado musical.
 
