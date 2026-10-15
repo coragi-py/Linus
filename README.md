@@ -41,7 +41,7 @@ O Linus é uma plataforma de aprendizagem de teoria musical, trilhas e lições,
 | Exercícios e prática | Execução de atividades e recursos de prática musical                          |
 | Música               | Gravação de músicas personalizadas através da tela de playground              |
 | Glossário            | Consulta de termos e conceitos musicais                                       |
-| Triagem              | Identificação e classificação inicial do usuário                             |
+| Triagem              | Identificação e classificação inicial do usuário                              |
 | Progresso            | Acompanhamento da evolução do estudante                                       |
 | Gamificação          | Mecânicas de progresso, recompensas ou indicadores                            |
 | Auditoria            | Registro de eventos relevantes do sistema                                     |
