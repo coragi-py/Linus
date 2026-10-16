@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Heart, PartyPopper, Volume2, X } from "lucide-react";
 import { Stave } from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
-import { findLesson, type Exercise } from "@/data/curriculum";
+import { type Exercise } from "@/data/curriculum";
 import { useLinus } from "@/context/LinusContext";
 import { playFeedback, playNote, playSequence } from "@/lib/audio";
 import { noteLabelPt } from "@/lib/music";
@@ -33,8 +33,10 @@ type Status = "idle" | "correct" | "wrong";
 function LessonPage() {
   const { lessonId } = Route.useParams();
   const navigate = useNavigate();
-  const found = useMemo(() => findLesson(lessonId), [lessonId]);
-  const { state, completeLesson, loseHeart, refillHearts, registerAnswer } = useLinus();
+  const { state, findLessonById, completeLesson, loseHeart, refillHearts, registerAnswer } =
+    useLinus();
+
+  const found = useMemo(() => findLessonById(lessonId), [findLessonById, lessonId]);
 
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
@@ -42,13 +44,19 @@ function LessonPage() {
   const [built, setBuilt] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
   const [acertos, setAcertos] = useState(0);
+  const startTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     refillHearts();
+    startTimeRef.current = Date.now();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId]);
 
-  if (!found) {
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+  }, [index]);
+
+  if (!found || found.lesson.exercises.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="font-display text-2xl">Lição não encontrada</h1>
@@ -67,9 +75,15 @@ function LessonPage() {
   function validar(resposta: string) {
     if (status !== "idle") return;
     const ok = resposta === ex.answer;
+    const elapsedMs = Math.max(0, Date.now() - startTimeRef.current);
+
     setSelected(resposta);
     setStatus(ok ? "correct" : "wrong");
-    registerAnswer(topic, ok);
+    registerAnswer(topic, ok, {
+      exercicioId: ex.id,
+      resposta,
+      tempoRespostaMs: elapsedMs,
+    });
     void playFeedback(ok);
     if (ok) setAcertos((a) => a + 1);
     else loseHeart();
@@ -77,7 +91,10 @@ function LessonPage() {
 
   function avancar() {
     if (index + 1 >= lesson.exercises.length) {
-      completeLesson(lesson.id);
+      completeLesson(lesson.id, {
+        acertos,
+        total: lesson.exercises.length,
+      });
       setFinished(true);
       return;
     }
@@ -130,7 +147,13 @@ function LessonPage() {
           >
             <X className="size-5" aria-hidden />
           </button>
-          <div className="h-4 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className="h-4 flex-1 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div
               className="h-full rounded-full bg-success transition-[width] duration-500"
               style={{ width: `${Math.max(progress, 4)}%` }}
@@ -157,10 +180,21 @@ function LessonPage() {
 
         {ex.stave && (
           <div className="neu-inset mt-6 flex flex-col items-center gap-3 p-5">
-            <Stave notes={ex.stave} sequential={ex.stave.length > 1} width={420} height={180} scale={1.45} clef="treble" />
+            <Stave
+              notes={ex.stave}
+              sequential={ex.stave.length > 1}
+              width={420}
+              height={180}
+              scale={1.45}
+              clef="treble"
+            />
             <button
               type="button"
-              onClick={() => void (ex.stave!.length > 1 ? playSequence(ex.stave!) : playNote(ex.stave![0]!, "2n"))}
+              onClick={() =>
+                void (ex.stave!.length > 1
+                  ? playSequence(ex.stave!)
+                  : playNote(ex.stave![0]!, "2n"))
+              }
               className="focus-ring flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm font-bold text-primary shadow-neu-sm active:translate-y-0.5"
             >
               <Volume2 className="size-4" aria-hidden /> Ouvir
@@ -180,7 +214,9 @@ function LessonPage() {
                 className={cn(
                   "focus-ring rounded-lg bg-background p-4 text-left font-bold shadow-neu-sm transition-transform hover:bg-primary-soft active:translate-y-0.5",
                   selected === opt && status === "correct" && "bg-success text-success-foreground",
-                  selected === opt && status === "wrong" && "animate-shake bg-destructive text-destructive-foreground",
+                  selected === opt &&
+                    status === "wrong" &&
+                    "animate-shake bg-destructive text-destructive-foreground",
                 )}
               >
                 {opt}

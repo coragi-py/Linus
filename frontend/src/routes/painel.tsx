@@ -24,9 +24,10 @@ export const Route = createFileRoute("/painel")({
 });
 
 function Painel() {
-  const { state } = useLinus();
-  const completedCount = state.completedLessons.length;
-  const progressPercent = Math.round((completedCount / ALL_LESSONS.length) * 100);
+  const { state, allLessons, progressPercent } = useLinus();
+  const completedCount = state.completedLessons.filter((id) =>
+    allLessons.some((l) => l.id === id),
+  ).length;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -44,14 +45,14 @@ function Painel() {
           <p className="mt-2 font-display text-4xl">{state.streak} dias</p>
           <p className="text-xs text-muted-foreground">Continue praticando para não perder!</p>
         </article>
-        
+
         <article className="neu p-6">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <TrendingUp className="size-4 text-success" aria-hidden /> Conclusão de lições
           </p>
           <p className="mt-2 font-display text-4xl">{progressPercent}%</p>
           <p className="text-xs text-muted-foreground">
-            {completedCount} de {ALL_LESSONS.length} lições concluídas
+            {completedCount} de {allLessons.length} lições concluídas
           </p>
         </article>
 
@@ -83,7 +84,9 @@ function Painel() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground italic">Complete lições para ganhar medalhas.</p>
+              <p className="text-sm text-muted-foreground italic">
+                Complete lições para ganhar medalhas.
+              </p>
             )}
           </div>
         </section>
@@ -93,20 +96,28 @@ function Painel() {
             <Target className="size-5 text-primary" aria-hidden /> Foco de Estudo
           </h2>
           <div className="mt-5 space-y-4">
-            {Object.entries(state.errorsByTopic).map(([topic, stats]) => (
-              <div key={topic}>
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wide">
-                  <span>{topic}</span>
-                  <span className="text-muted-foreground">{Math.round(((stats.total - stats.erros) / stats.total) * 100)}% precisão</span>
+            {Object.entries(state.errorsByTopic).map(([topic, stats]) => {
+              // Cálculo seguro da porcentagem de precisão
+              const total = stats.total || 0;
+              const erros = stats.erros || 0;
+              const acertos = Math.max(0, total - erros);
+              const precisao = total > 0 ? Math.round((acertos / total) * 100) : 100;
+
+              return (
+                <div key={topic}>
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-wide">
+                    <span>{topic}</span>
+                    <span className="text-muted-foreground">{precisao}% precisão</span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${precisao}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                  <div 
-                    className="h-full bg-primary transition-all" 
-                    style={{ width: `${((stats.total - stats.erros) / stats.total) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>
