@@ -36,8 +36,15 @@ export type LinusState = {
   errorsByTopic: Record<string, { erros: number; total: number }>;
 };
 
-const STORAGE_KEY = "linus.state.v1";
+const STORAGE_KEY = "linus.state.v2";
 const API_BASE = "http://localhost:8000/api/v1";
+
+const EMPTY_TOPICS: Record<string, { erros: number; total: number }> = {
+  "Leitura de Partituras": { erros: 0, total: 0 },
+  "Intervalos e Escalas": { erros: 0, total: 0 },
+  "Modos Gregos": { erros: 0, total: 0 },
+  "Acordes e Campos Harmônicos": { erros: 0, total: 0 },
+};
 
 const INITIAL: LinusState = {
   name: "Aluno Linus",
@@ -49,12 +56,7 @@ const INITIAL: LinusState = {
   hearts: 5,
   completedLessons: [],
   badges: [],
-  errorsByTopic: {
-    "Leitura de Partituras": { erros: 0, total: 0 },
-    "Intervalos e Escalas": { erros: 0, total: 0 },
-    "Modos Gregos": { erros: 0, total: 0 },
-    "Acordes e Campos Harmônicos": { erros: 0, total: 0 },
-  },
+  errorsByTopic: { ...EMPTY_TOPICS },
 };
 
 type Ctx = {
@@ -94,11 +96,22 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, ...patch }));
   }, []);
 
-  // 1. Hidrata estado salvo localmente
+  // 1. Hidrata estado salvo localmente (remove cache legado v1 se existir)
   useEffect(() => {
     try {
+      localStorage.removeItem("linus.state.v1");
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState({ ...INITIAL, ...(JSON.parse(raw) as Partial<LinusState>) });
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<LinusState>;
+        setState({
+          ...INITIAL,
+          ...parsed,
+          errorsByTopic: {
+            ...EMPTY_TOPICS,
+            ...(parsed.errorsByTopic || {}),
+          },
+        });
+      }
     } catch {
       /* ignora dados corrompidos */
     }
@@ -154,7 +167,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 4. Sincroniza progresso do aluno autenticado com o backend
+  // 4. Sincroniza progresso do aluno autenticado com o backend (fonte única da verdade)
   const syncUserProgress = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
@@ -169,17 +182,15 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       setState((s) => ({
         ...s,
         loggedIn: true,
-        streak: typeof data.streak === "number" ? data.streak : s.streak,
-        completedLessons: Array.isArray(data.completedLessons)
-          ? data.completedLessons
-          : s.completedLessons,
-        badges: Array.isArray(data.badges) ? data.badges : s.badges,
-        errorsByTopic:
-          data.errorsByTopic && Object.keys(data.errorsByTopic).length > 0
-            ? { ...s.errorsByTopic, ...data.errorsByTopic }
-            : s.errorsByTopic,
-        placement: (data.placement as Placement) || s.placement,
-        placementDone: Boolean(data.placement || s.placementDone),
+        streak: typeof data.streak === "number" ? data.streak : 0,
+        completedLessons: Array.isArray(data.completedLessons) ? data.completedLessons : [],
+        badges: Array.isArray(data.badges) ? data.badges : [],
+        errorsByTopic: {
+          ...EMPTY_TOPICS,
+          ...(data.errorsByTopic || {}),
+        },
+        placement: (data.placement as Placement) || null,
+        placementDone: Boolean(data.placement),
       }));
     } catch (err) {
       console.error("Falha ao sincronizar progresso com o backend:", err);
@@ -216,7 +227,6 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     entries.sort((a, b) => b.rate - a.rate);
     const weakest = entries[0] && entries[0].rate > 0.3 ? entries[0] : null;
 
-    // Resolve unidade recomendada pelo nível de placement (compatível com UUID ou u1/u2/u3)
     const placementLevel = state.placement || "Iniciante";
     const matchedUnit =
       units.find((u) => u.level === placementLevel) ??
@@ -236,7 +246,12 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       allLessons,
       findLessonById,
       refreshCurriculum,
-      login: (name) => update({ name: name || "Aluno Linus", loggedIn: true }),
+      login: (name) =>
+        setState({
+          ...INITIAL,
+          name: name || "Aluno Linus",
+          loggedIn: true,
+        }),
       logout: async () => {
         try {
           const accessToken = localStorage.getItem("access_token");
@@ -257,8 +272,9 @@ export function LinusProvider({ children }: { children: ReactNode }) {
         } finally {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
+          localStorage.removeItem("linus.state.v1");
           localStorage.removeItem(STORAGE_KEY);
-          update({ loggedIn: false });
+          setState(INITIAL);
           window.location.href = "/";
         }
       },
@@ -337,7 +353,10 @@ export function LinusProvider({ children }: { children: ReactNode }) {
               if (data.errorsByTopic) {
                 setState((s) => ({
                   ...s,
-                  errorsByTopic: { ...s.errorsByTopic, ...data.errorsByTopic },
+                  errorsByTopic: {
+                    ...EMPTY_TOPICS,
+                    ...data.errorsByTopic,
+                  },
                 }));
               }
             })

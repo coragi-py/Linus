@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Flame, Star, Trophy, Target, TrendingUp, Award, Clock } from "lucide-react";
+import { Flame, Star, Trophy, Target, TrendingUp, Award } from "lucide-react";
 import { SectionTitle } from "@/components/AppShell";
 import { useLinus } from "@/context/LinusContext";
-import { ALL_LESSONS } from "@/data/curriculum";
 
 export const Route = createFileRoute("/painel")({
   head: () => ({
@@ -97,24 +96,33 @@ function Painel() {
           </h2>
           <div className="mt-5 space-y-4">
             {Object.entries(state.errorsByTopic).map(([topic, stats]) => {
-              // Cálculo seguro da porcentagem de precisão
-              const total = stats.total || 0;
-              const erros = stats.erros || 0;
+              const total = stats?.total || 0;
+              const erros = stats?.erros || 0;
+              const temRegistros = total > 0;
               const acertos = Math.max(0, total - erros);
-              const precisao = total > 0 ? Math.round((acertos / total) * 100) : 100;
+              const precisao = temRegistros ? Math.round((acertos / total) * 100) : 0;
 
               return (
                 <div key={topic}>
-                  <div className="flex justify-between text-xs font-bold uppercase tracking-wide">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wide">
                     <span>{topic}</span>
-                    <span className="text-muted-foreground">{precisao}% precisão</span>
+                    {temRegistros ? (
+                      <span className="text-muted-foreground">{precisao}% precisão</span>
+                    ) : (
+                      <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-normal normal-case text-muted-foreground italic">
+                        Sem registros no momento
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${precisao}%` }}
-                    />
-                  </div>
+
+                  {temRegistros && (
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${precisao}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
