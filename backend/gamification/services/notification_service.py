@@ -53,7 +53,7 @@ class StreakNotificationService:
 
         return {
             "data_verificacao": str(hoje),
-            "elegiveis": enviado_total := (enviados + falhas),
+            "elegiveis": (enviado_total := (enviados + falhas)),
             "enviados": enviados,
             "falhas": falhas,
         }

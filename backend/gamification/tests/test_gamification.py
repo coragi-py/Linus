@@ -3,9 +3,13 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
+from unittest.mock import patch
+from django.core import mail
 from accounts.models import CustomUser
 from learning.models import Aula
+from audit.models import AuditLog
 from gamification.models import GamificacaoPerfil, Badge, UsuarioBadge
+from gamification.services.notification_service import StreakNotificationService
 
 
 class GamificationModuleTests(TestCase):
