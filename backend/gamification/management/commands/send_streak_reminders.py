@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from gamification.services import StreakNotificationService
+from gamification.services.notification_service import StreakNotificationService
 
 
 class Command(BaseCommand):
