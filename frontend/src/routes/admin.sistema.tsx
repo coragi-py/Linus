@@ -1,7 +1,15 @@
 // Adicioando métrica de termos de uso/lgpd/banco de dados no dash, por Anny em 16/10.
+// Adicionando filtro e paginação na visualização do usuário, por Anny em 17/10.
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Users, ShieldCheck, Activity } from "lucide-react";
+import { 
+  Users, 
+  ShieldCheck, 
+  Activity, 
+  Search, 
+  Filter, 
+  ChevronLeft, 
+  ChevronRight } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -29,6 +37,41 @@ function AdminSistema() {
   const [usuarios, setUsuarios] = useState<RealUser[]>([]);
   const [metricas, setMetricas] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("todos");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Quantidade de usuários por página
+
+  //Volta para página 1 quando busca algo no filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter]);
+
+  //Filtragem
+  const filteredUsers = usuarios.filter((u) => {
+    const matchesSearch =
+      u.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // Se o filtro selecionado for estudante/usuario, aceita ambos os termos do banco
+    let matchesRole = roleFilter === "todos";
+    if (!matchesRole) {
+      if (roleFilter === "estudante" || roleFilter === "usuario") {
+        matchesRole = u.role === "estudante" || u.role === "usuario";
+      } else {
+        matchesRole = u.role === roleFilter;
+      }
+    }
+
+    return matchesSearch && matchesRole;
+  });
+
+  //Paginação
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   // Busca os dados reais ao montar a página
   useEffect(() => {
@@ -263,81 +306,159 @@ function AdminSistema() {
 
         {/* ABA 2: GESTÃO DE USUÁRIOS */}
         <TabsContent value="usuarios" className="animate-in fade-in-50">
-          <section className="neu overflow-x-auto rounded-2xl bg-card border border-border">
-            <div className="p-6 border-b border-border">
-              <h2 className="font-display text-lg">Tabela de Acessos</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Altere os níveis de permissão e bloqueie contas.
-              </p>
+          <section className="neu rounded-2xl bg-card border border-border flex flex-col overflow-hidden"> 
+            {/* CABEÇALHO COM PESQUISA E FILTROS */}
+            <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/10">
+              <div>
+                <h2 className="font-display text-lg">Tabela de Acessos</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pesquise, filtre e altere os níveis de permissão.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Barra de Pesquisa */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar nome ou e-mail..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-10 w-full sm:w-64 rounded-xl border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                  />
+                </div>
+                {/* Filtro por Role */}
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <select 
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="h-10 w-full sm:w-48 rounded-xl border border-input bg-background pl-9 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer shadow-sm"
+                  >
+                    <option value="todos">Todos os Papéis</option>
+                    {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                      <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <table className="w-full min-w-[800px] text-sm">
-              <thead>
-                <tr className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="p-4 font-bold">Nome</th>
-                  <th className="p-4 font-bold">E-mail</th>
-                  <th className="p-4 font-bold">Nível de Acesso (Papel)</th>
-                  <th className="p-4 font-bold">Status da Conta</th>
-                  <th className="p-4 font-bold text-right">Ação Rápida</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((u) => (
-                  <tr
-                    key={u.id}
-                    className="border-b border-border hover:bg-muted/20 transition-colors"
-                  >
-                    <td className="p-4 font-bold">{u.nome}</td>
-                    <td className="p-4 text-muted-foreground">{u.email}</td>
-                    <td className="p-4">
-                      <select
-                        value={u.role}
-                        onChange={(e) => handleUpdateRole(u.id, e.target.value as Role)}
-                        className="focus-ring h-9 rounded-lg border border-border bg-background px-3 py-1 text-xs font-bold transition-all hover:bg-muted cursor-pointer"
-                      >
-                        {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABEL[r]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-                          u.ativo
-                            ? "bg-success/15 text-success"
-                            : "bg-destructive/15 text-destructive",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "size-1.5 rounded-full",
-                            u.ativo ? "bg-success" : "bg-destructive",
-                          )}
-                        />
-                        {u.ativo ? "Ativo" : "Suspenso"}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <button
-                        type="button"
-                        className={cn(
-                          "text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors",
-                          u.ativo
-                            ? "border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-                            : "border-success/30 text-success hover:bg-success hover:text-white",
-                        )}
-                        onClick={() => handleToggleStatus(u.id, u.ativo)}
-                      >
-                        {u.ativo ? "Suspender" : "Reativar"}
-                      </button>
-                    </td>
+            {/* TABELA */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px] text-sm">
+                <thead>
+                  <tr className="bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="p-4 font-bold">Nome</th>
+                    <th className="p-4 font-bold">E-mail</th>
+                    <th className="p-4 font-bold">Nível de Acesso (Papel)</th>
+                    <th className="p-4 font-bold">Status da Conta</th>
+                    <th className="p-4 font-bold text-right">Ação Rápida</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginatedUsers.length > 0 ? (
+                    paginatedUsers.map((u) => (
+                      <tr
+                        key={u.id}
+                        className="border-b border-border hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="p-4 font-bold text-foreground">{u.nome}</td>
+                        <td className="p-4 text-muted-foreground">{u.email}</td>
+                        <td className="p-4">
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUpdateRole(u.id, e.target.value as Role)}
+                            className="focus-ring h-9 rounded-lg border border-border bg-background px-3 py-1 text-xs font-bold transition-all hover:bg-muted cursor-pointer"
+                          >
+                            {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABEL[r]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                              u.ativo
+                                ? "bg-success/15 text-success"
+                                : "bg-destructive/15 text-destructive",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "size-1.5 rounded-full",
+                                u.ativo ? "bg-success" : "bg-destructive",
+                              )}
+                            />
+                            {u.ativo ? "Ativo" : "Suspenso"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <button
+                            type="button"
+                            className={cn(
+                              "text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors",
+                              u.ativo
+                                ? "border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                                : "border-success/30 text-success hover:bg-success hover:text-white",
+                            )}
+                            onClick={() => handleToggleStatus(u.id, u.ativo)}
+                          >
+                            {u.ativo ? "Suspender" : "Reativar"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="p-12 text-center text-muted-foreground">
+                        <Search className="size-8 mx-auto mb-3 opacity-20" />
+                        Nenhum usuário encontrado com os filtros atuais.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CONTROLES DE PAGINAÇÃO */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/10 text-sm">
+                <span className="text-muted-foreground font-medium">
+                  Mostrando{" "}
+                  <strong className="text-foreground">
+                    {(currentPage - 1) * itemsPerPage + 1}
+                  </strong>{" "}
+                  a{" "}
+                  <strong className="text-foreground">
+                    {Math.min(currentPage * itemsPerPage, filteredUsers.length)}
+                  </strong>{" "}
+                  de <strong className="text-foreground">{filteredUsers.length}</strong> usuários
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <span className="font-bold px-3 py-1 bg-muted/50 rounded-md">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </TabsContent>
       </Tabs>
