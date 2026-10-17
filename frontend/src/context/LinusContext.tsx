@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { jwtDecode } from "jwt-decode";
 import {
   UNITS as FALLBACK_UNITS,
   RECOMMENDED_UNIT,
@@ -15,9 +16,10 @@ import {
   type Placement,
 } from "@/data/curriculum";
 
-export type Role = "estudante" | "conteudo" | "sistema";
+export type Role =
+  "estudante" | "conteudo" | "sistema" | "usuario" | "admin-conteudo" | "admin-sistema";
 
-export const ROLE_LABEL: Record<Role, string> = {
+export const ROLE_LABEL: Record<string, string> = {
   estudante: "Estudante",
   conteudo: "Administrador de Conteúdo",
   sistema: "Administrador de Sistemas",
@@ -59,11 +61,19 @@ const INITIAL: LinusState = {
   errorsByTopic: { ...EMPTY_TOPICS },
 };
 
-function mapBackendRole(backendRole?: string, fallbackRole: Role = "estudante"): Role {
-  if (backendRole === "admin-conteudo" || backendRole === "conteudo") return "conteudo";
-  if (backendRole === "admin-sistema" || backendRole === "sistema") return "sistema";
-  if (backendRole === "usuario" || backendRole === "estudante") return "estudante";
-  return fallbackRole;
+function getAuthFromToken(): { role?: Role; name?: string; loggedIn: boolean } {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) return { loggedIn: false };
+    const decoded = jwtDecode<{ role?: Role; nome?: string }>(token);
+    return {
+      loggedIn: true,
+      role: decoded.role,
+      name: decoded.nome,
+    };
+  } catch {
+    return { loggedIn: false };
+  }
 }
 
 type Ctx = {
@@ -100,24 +110,35 @@ export function LinusProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   const update = useCallback((patch: Partial<LinusState>) => {
-    setState((s) => ({ ...s, ...patch }));
+    setState((s) => {
+      const next = { ...s, ...patch };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* armazenamento indisponível */
+      }
+      return next;
+    });
   }, []);
 
-  // 1. Hidrata estado salvo localmente preservando role e nome
+  // 1. Hidrata estado salvo localmente + garante role/nome do JWT se estiver logado
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<LinusState>;
-        setState({
-          ...INITIAL,
-          ...parsed,
-          errorsByTopic: {
-            ...EMPTY_TOPICS,
-            ...(parsed.errorsByTopic || {}),
-          },
-        });
-      }
+      const parsed = raw ? (JSON.parse(raw) as Partial<LinusState>) : {};
+      const tokenAuth = getAuthFromToken();
+
+      setState({
+        ...INITIAL,
+        ...parsed,
+        loggedIn: tokenAuth.loggedIn || Boolean(parsed.loggedIn),
+        role: tokenAuth.role || parsed.role || INITIAL.role,
+        name: tokenAuth.name || parsed.name || INITIAL.name,
+        errorsByTopic: {
+          ...EMPTY_TOPICS,
+          ...(parsed.errorsByTopic || {}),
+        },
+      });
     } catch {
       /* ignora dados corrompidos */
     }
@@ -173,11 +194,12 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 4. Sincroniza progresso do usuário autenticado com o backend sem sobrescrever o role
+  // 4. Sincroniza progresso do usuário autenticado com o backend preservando role do JWT
   const syncUserProgress = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
+      const tokenAuth = getAuthFromToken();
       const res = await fetch(`${API_BASE}/learning/progresso/`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -188,8 +210,8 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       setState((s) => ({
         ...s,
         loggedIn: true,
-        name: data.nome || s.name,
-        role: data.role ? mapBackendRole(data.role, s.role) : s.role,
+        name: tokenAuth.name || data.nome || s.name,
+        role: tokenAuth.role || s.role,
         streak: typeof data.streak === "number" ? data.streak : 0,
         completedLessons: Array.isArray(data.completedLessons) ? data.completedLessons : [],
         badges: Array.isArray(data.badges) ? data.badges : [],
@@ -254,17 +276,18 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       allLessons,
       findLessonById,
       refreshCurriculum,
-      // Preserva s.role ao fazer login e zera métricas de usuário anterior
-      login: (name) =>
-        setState((s) => ({
-          ...s,
-          name: name || "Aluno Linus",
+      login: (name) => {
+        const tokenAuth = getAuthFromToken();
+        update({
+          name: name || tokenAuth.name || "Aluno Linus",
+          role: tokenAuth.role || state.role,
           loggedIn: true,
           streak: 0,
           completedLessons: [],
           badges: [],
           errorsByTopic: { ...EMPTY_TOPICS },
-        })),
+        });
+      },
       logout: async () => {
         try {
           const accessToken = localStorage.getItem("access_token");
