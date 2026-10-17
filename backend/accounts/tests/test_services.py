@@ -1,6 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from accounts.services.security_service import SecurityService
+from django.core import mail
+from django.test import TestCase
+from accounts.services.email_service import EmailService
 
 class SecurityServiceTest(unittest.TestCase):
     
@@ -51,3 +54,25 @@ class SecurityServiceTest(unittest.TestCase):
         # Assert
         self.assertEqual(len(otp), 6)
         self.assertTrue(otp.isdigit())
+
+class EmailServiceTest(TestCase):
+    def test_send_2fa_email_dispara_mensagem_corretamente(self):
+        EmailService.send_2fa_email("aluno@linus.com", "654321")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Código de Segurança", mail.outbox[0].subject)
+        self.assertIn("654321", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].to, ["aluno@linus.com"])
+
+    def test_send_password_reset_email_dispara_link_corretamente(self):
+        link = "http://localhost:8080/recuperar-senha?token=abc"
+        EmailService.send_password_reset_email("aluno@linus.com", link)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Recuperação de Senha", mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].to, ["aluno@linus.com"])
+
+    def test_send_streak_reminder_email_dispara_lembrete_de_ofensiva(self):
+        EmailService.send_streak_reminder_email("aluno@linus.com", "Fabio Yuuki", 4)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("4 dias", mail.outbox[0].subject)
+        self.assertIn("Fabio", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].to, ["aluno@linus.com"])

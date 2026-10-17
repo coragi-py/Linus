@@ -85,3 +85,55 @@ class GamificationModuleTests(TestCase):
         self.assertIn("primeira-nota", res.data["badges"])
         self.assertIn("tres-licoes", res.data["badges"])
         self.assertEqual(Badge.objects.filter(codigo="tres-licoes").count(), 1)
+
+    def test_notificar_usuarios_em_risco_envia_email_apenas_para_quem_nao_estudou_hoje(self):
+        hoje = timezone.localdate()
+        ontem = hoje - timedelta(days=1)
+
+        # Aluno em risco: estudou ontem e ainda não estudou hoje
+        GamificacaoPerfil.objects.create(
+            usuario=self.aluno,
+            streak_atual=3,
+            melhor_streak=3,
+            ultimo_acesso_estudo=ontem,
+        )
+
+        # Outro aluno que já estudou hoje (não deve receber e-mail)
+        aluno_em_dia = CustomUser.objects.create_user(
+            email="emdia@teste.com",
+            password="PasswordForte!123",
+            nome="Aluno Em Dia",
+            role=CustomUser.Role.USUARIO,
+            terms_accepted=True,
+        )
+        GamificacaoPerfil.objects.create(
+            usuario=aluno_em_dia,
+            streak_atual=5,
+            melhor_streak=5,
+            ultimo_acesso_estudo=hoje,
+        )
+
+        resultado = StreakNotificationService.notificar_usuarios_em_risco()
+        self.assertEqual(resultado["elegiveis"], 1)
+        self.assertEqual(resultado["enviados"], 1)
+        self.assertEqual(resultado["falhas"], 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["aluno.game@teste.com"])
+        self.assertTrue(AuditLog.objects.filter(action="STREAK_REMINDER_EMAIL_SENT").exists())
+
+    @patch("accounts.services.email_service.EmailService.send_streak_reminder_email")
+    def test_notificar_usuarios_em_risco_registra_auditoria_se_smtp_falhar(self, mock_send):
+        mock_send.side_effect = Exception("Falha de conexão SMTP Brevo")
+        ontem = timezone.localdate() - timedelta(days=1)
+
+        GamificacaoPerfil.objects.create(
+            usuario=self.aluno,
+            streak_atual=2,
+            melhor_streak=2,
+            ultimo_acesso_estudo=ontem,
+        )
+
+        resultado = StreakNotificationService.notificar_usuarios_em_risco()
+        self.assertEqual(resultado["enviados"], 0)
+        self.assertEqual(resultado["falhas"], 1)
+        self.assertTrue(AuditLog.objects.filter(action="STREAK_REMINDER_EMAIL_FAILED").exists())
