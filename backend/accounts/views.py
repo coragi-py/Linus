@@ -508,8 +508,8 @@ class AdminSystemUsersView(APIView):
                     "admin-sistema": "admin-sistema",
                     "conteudo": "admin-conteudo",
                     "admin-conteudo": "admin-conteudo",
-                    "estudante": "usuario",
-                    "usuario": "usuario",
+                    "estudante": "estudante",
+                    "usuario": "estudante",
                 }
                 target_user.role = role_map.get(new_role, new_role)
                 campos_atualizados.append('role')

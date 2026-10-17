@@ -8,7 +8,7 @@ def validar_nickname_apropriado(value):
     """
     Validador para bloquear palavras impróprias ou reservadas no nickname.
     """
-    # Lista de termos bloqueados (adicione os termos impróprios reais aqui)
+    # Lista de termos bloqueados
     blacklist = [
         'admin', 'administrador', 'root', 'suporte', 'linus', 'sistema',
         'palavrao1', 'palavrao2'
@@ -49,7 +49,7 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        USUARIO = 'usuario', 'Usuário'
+        USUARIO = 'estudante', 'Estudante'
         ADMIN_CONTEUDO = 'admin-conteudo', 'Admin Conteúdo'
         ADMIN_SISTEMA = 'admin-sistema', 'Admin Sistema'
 

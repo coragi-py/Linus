@@ -57,7 +57,7 @@ class ProgressModuleTests(TestCase):
         res = self.client.get("/api/v1/learning/progresso/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["nome"], "Aluno Progresso")
-        self.assertEqual(res.data["role"], "usuario")
+        self.assertEqual(res.data["role"], "estudante")
         self.assertEqual(res.data["streak"], 1)
         self.assertIn(str(self.aula.id), res.data["completedLessons"])
         self.assertIn("primeira-nota", res.data["badges"])

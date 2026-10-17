@@ -21,8 +21,11 @@ export type Role =
 
 export const ROLE_LABEL: Record<string, string> = {
   estudante: "Estudante",
+  usuario: "Estudante",
   conteudo: "Administrador de Conteúdo",
+  "admin-conteudo": "Administrador de Conteúdo",
   sistema: "Administrador de Sistemas",
+  "admin-sistema": "Administrador de Sistemas",
 };
 
 export type LinusState = {

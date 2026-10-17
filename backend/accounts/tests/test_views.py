@@ -125,7 +125,7 @@ class AuthAndLGPDViewsTests(APITestCase):
         response_revert = self.client.patch(url, {'role': 'estudante'}, format='json')
         self.assertEqual(response_revert.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.role, 'usuario')
+        self.assertEqual(self.user.role, 'estudante')
 
     def test_lgpd_exclusao_de_conta_anonimiza_dados(self):
         """Garante a exclusão irreversível dos dados pessoais mantendo a integridade demográfica."""
