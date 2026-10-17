@@ -13,7 +13,7 @@ from audit.services.audit_service import AuditService
 from exercises.models import Exercicio, TentativaExercicio
 from exercises.serializers import ExercicioSerializer, TentativaExercicioSerializer
 from gamification.models import GamificacaoPerfil, Badge, UsuarioBadge
-from gamification.services import StreakNotificationService
+from gamification.services.notification_service import StreakNotificationService
 from placement.models import TriagemInicial
 from progress.models import ProgressoAula
 from .models import Modulo, Aula
