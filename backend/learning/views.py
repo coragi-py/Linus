@@ -367,6 +367,8 @@ class MeuProgressoView(APIView):
 
         return Response(
             {
+                'nome': usuario.nome,
+                'role': usuario.role,
                 'streak': perfil.streak_atual,
                 'melhor_streak': perfil.melhor_streak,
                 'pontuacao_total': perfil.pontuacao_total,

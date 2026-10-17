@@ -36,7 +36,7 @@ export type LinusState = {
   errorsByTopic: Record<string, { erros: number; total: number }>;
 };
 
-const STORAGE_KEY = "linus.state.v2";
+const STORAGE_KEY = "linus.state.v1";
 const API_BASE = "http://localhost:8000/api/v1";
 
 const EMPTY_TOPICS: Record<string, { erros: number; total: number }> = {
@@ -58,6 +58,13 @@ const INITIAL: LinusState = {
   badges: [],
   errorsByTopic: { ...EMPTY_TOPICS },
 };
+
+function mapBackendRole(backendRole?: string, fallbackRole: Role = "estudante"): Role {
+  if (backendRole === "admin-conteudo" || backendRole === "conteudo") return "conteudo";
+  if (backendRole === "admin-sistema" || backendRole === "sistema") return "sistema";
+  if (backendRole === "usuario" || backendRole === "estudante") return "estudante";
+  return fallbackRole;
+}
 
 type Ctx = {
   state: LinusState;
@@ -96,10 +103,9 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, ...patch }));
   }, []);
 
-  // 1. Hidrata estado salvo localmente (remove cache legado v1 se existir)
+  // 1. Hidrata estado salvo localmente preservando role e nome
   useEffect(() => {
     try {
-      localStorage.removeItem("linus.state.v1");
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<LinusState>;
@@ -167,7 +173,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 4. Sincroniza progresso do aluno autenticado com o backend (fonte única da verdade)
+  // 4. Sincroniza progresso do usuário autenticado com o backend sem sobrescrever o role
   const syncUserProgress = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
@@ -182,6 +188,8 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       setState((s) => ({
         ...s,
         loggedIn: true,
+        name: data.nome || s.name,
+        role: data.role ? mapBackendRole(data.role, s.role) : s.role,
         streak: typeof data.streak === "number" ? data.streak : 0,
         completedLessons: Array.isArray(data.completedLessons) ? data.completedLessons : [],
         badges: Array.isArray(data.badges) ? data.badges : [],
@@ -189,8 +197,8 @@ export function LinusProvider({ children }: { children: ReactNode }) {
           ...EMPTY_TOPICS,
           ...(data.errorsByTopic || {}),
         },
-        placement: (data.placement as Placement) || null,
-        placementDone: Boolean(data.placement),
+        placement: (data.placement as Placement) || s.placement,
+        placementDone: Boolean(data.placement || s.placementDone),
       }));
     } catch (err) {
       console.error("Falha ao sincronizar progresso com o backend:", err);
@@ -246,12 +254,17 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       allLessons,
       findLessonById,
       refreshCurriculum,
+      // Preserva s.role ao fazer login e zera métricas de usuário anterior
       login: (name) =>
-        setState({
-          ...INITIAL,
+        setState((s) => ({
+          ...s,
           name: name || "Aluno Linus",
           loggedIn: true,
-        }),
+          streak: 0,
+          completedLessons: [],
+          badges: [],
+          errorsByTopic: { ...EMPTY_TOPICS },
+        })),
       logout: async () => {
         try {
           const accessToken = localStorage.getItem("access_token");
@@ -272,7 +285,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
         } finally {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-          localStorage.removeItem("linus.state.v1");
+          localStorage.removeItem("linus.state.v2");
           localStorage.removeItem(STORAGE_KEY);
           setState(INITIAL);
           window.location.href = "/";
@@ -367,7 +380,8 @@ export function LinusProvider({ children }: { children: ReactNode }) {
       refillHearts: () => update({ hearts: 5 }),
       awardBadge: (badge) =>
         setState((s) => (s.badges.includes(badge) ? s : { ...s, badges: [...s.badges, badge] })),
-      resetProgress: () => setState({ ...INITIAL, loggedIn: state.loggedIn, name: state.name }),
+      resetProgress: () =>
+        setState({ ...INITIAL, loggedIn: state.loggedIn, name: state.name, role: state.role }),
       recommendedUnitId,
       progressPercent: Math.round((completedValidCount / totalCount) * 100),
       weakestTopic: weakest,
