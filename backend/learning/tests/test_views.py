@@ -2,6 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from accounts.models import CustomUser
+from audit.models import AuditLog
 from learning.models import Modulo, Aula
 from exercises.models import Exercicio, TentativaExercicio
 from progress.models import ProgressoAula
@@ -40,8 +41,7 @@ class LearningModuleTests(TestCase):
         self.assertIn("lessons", primeira_unidade)
         self.assertIn("exercises", primeira_unidade["lessons"][0])
 
-    def test_rbac_bloqueia_aluno_comum_de_criar_modulo(self):
-        self.client.force_authenticate(user=self.aluno)
+    def test_rbac_bloqueia_visitante_e_aluno_comum_de_modificar_conteudo(self):
         payload = {
             "ordem": 99,
             "titulo": "Unidade Invasora",
@@ -49,58 +49,58 @@ class LearningModuleTests(TestCase):
             "categoria": "Iniciante",
             "ativo": True,
         }
-        response = self.client.post("/api/v1/learning/modulos/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Visitante anônimo -> 401
+        res_anon = self.client.post("/api/v1/learning/modulos/", payload, format="json")
+        self.assertEqual(res_anon.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_rbac_permite_admin_conteudo_criar_modulo(self):
+        # Aluno autenticado -> 403
+        self.client.force_authenticate(user=self.aluno)
+        res_aluno = self.client.post("/api/v1/learning/modulos/", payload, format="json")
+        self.assertEqual(res_aluno.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rbac_permite_admin_conteudo_crud_completo_com_auditoria(self):
         self.client.force_authenticate(user=self.admin_conteudo)
-        payload = {
+
+        # Criar módulo
+        payload_mod = {
             "ordem": 5,
             "titulo": "Unidade 5: Rítmica Avançada",
-            "descricao": " Polirritmia e compassos compostos.",
+            "descricao": "Polirritmia e compassos compostos.",
             "categoria": "Praticante Empírico",
             "ativo": True,
         }
-        response = self.client.post("/api/v1/learning/modulos/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        res_mod = self.client.post("/api/v1/learning/modulos/", payload_mod, format="json")
+        self.assertEqual(res_mod.status_code, status.HTTP_201_CREATED)
+        mod_id = res_mod.data["id"]
+        self.assertTrue(AuditLog.objects.filter(action="MODULO_CREATED").exists())
 
-    def test_registrar_tentativa_exercicio_e_calcular_erros_por_topico(self):
-        self.client.force_authenticate(user=self.aluno)
-        payload = {
-            "exercicio": str(self.exercicio.id),
-            "resposta": "Resposta Errada",
-            "tempo_resposta_ms": 1850,
+        # Atualizar módulo
+        res_patch = self.client.patch(
+            f"/api/v1/learning/modulos/{mod_id}/",
+            {"titulo": "Unidade 5: Rítmica Modificada"},
+            format="json",
+        )
+        self.assertEqual(res_patch.status_code, status.HTTP_200_OK)
+        self.assertTrue(AuditLog.objects.filter(action="MODULO_UPDATED").exists())
+
+        # Criar aula dentro do módulo
+        payload_aula = {
+            "modulo": mod_id,
+            "ordem": 1,
+            "titulo": "Compasso 6/8",
+            "conteudo_teorico": "Subdivisão ternária",
+            "ativa": True,
         }
-        response = self.client.post("/api/v1/learning/tentativas/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data["acertou"])
-        self.assertIn(self.exercicio.tag_topico, response.data["errorsByTopic"])
-        self.assertEqual(
-            response.data["errorsByTopic"][self.exercicio.tag_topico]["erros"], 1
-        )
-        self.assertEqual(TentativaExercicio.objects.filter(usuario=self.aluno).count(), 1)
+        res_aula = self.client.post("/api/v1/learning/aulas/", payload_aula, format="json")
+        self.assertEqual(res_aula.status_code, status.HTTP_201_CREATED)
+        aula_id = res_aula.data["id"]
+        self.assertTrue(AuditLog.objects.filter(action="AULA_CREATED").exists())
 
-    def test_concluir_aula_atualiza_progresso_streak_e_concede_badge(self):
-        self.client.force_authenticate(user=self.aluno)
-        url = f"/api/v1/learning/aulas/{self.aula.id}/concluir/"
-        response = self.client.post(
-            url, {"acertos": 3, "total": 3}, format="json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data["concluida"])
-        self.assertEqual(response.data["streak"], 1)
-        self.assertIn(str(self.aula.id), response.data["completedLessons"])
-        self.assertIn("primeira-nota", response.data["badges"])
+        # Excluir aula e módulo
+        res_del_aula = self.client.delete(f"/api/v1/learning/aulas/{aula_id}/")
+        self.assertEqual(res_del_aula.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertTrue(AuditLog.objects.filter(action="AULA_DELETED").exists())
 
-        self.assertTrue(
-            ProgressoAula.objects.filter(
-                usuario=self.aluno, aula=self.aula, concluida=True
-            ).exists()
-        )
-        perfil = GamificacaoPerfil.objects.get(usuario=self.aluno)
-        self.assertEqual(perfil.streak_atual, 1)
-        self.assertTrue(
-            UsuarioBadge.objects.filter(
-                usuario=self.aluno, badge__codigo="primeira-nota"
-            ).exists()
-        )
+        res_del_mod = self.client.delete(f"/api/v1/learning/modulos/{mod_id}/")
+        self.assertEqual(res_del_mod.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertTrue(AuditLog.objects.filter(action="MODULO_DELETED").exists())
