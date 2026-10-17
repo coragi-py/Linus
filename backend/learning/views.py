@@ -13,6 +13,7 @@ from audit.services.audit_service import AuditService
 from exercises.models import Exercicio, TentativaExercicio
 from exercises.serializers import ExercicioSerializer, TentativaExercicioSerializer
 from gamification.models import GamificacaoPerfil, Badge, UsuarioBadge
+from gamification.services import StreakNotificationService
 from placement.models import TriagemInicial
 from progress.models import ProgressoAula
 from .models import Modulo, Aula
@@ -379,3 +380,14 @@ class MeuProgressoView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+    
+class DispararLembretesStreakView(APIView):
+    """
+    Endpoint administrativo (POST /api/v1/learning/streak-reminders/) para
+    acionar o envio de lembretes de ofensiva via Brevo.
+    """
+    permission_classes = [IsAdminConteudoOrReadOnly]
+
+    def post(self, request):
+        resultado = StreakNotificationService.notificar_usuarios_em_risco(request=request)
+        return Response(resultado, status=status.HTTP_200_OK)
