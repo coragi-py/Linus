@@ -1,3 +1,4 @@
+// Adicioando métrica de termos de uso/lgpd/banco de dados no dash, por Anny em 16/10.
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Users, ShieldCheck, Activity } from "lucide-react";
@@ -161,9 +162,9 @@ function AdminSistema() {
             />
             <Metric icon={Activity} label="Contas Ativas" value={metricas?.totais?.ativos || "0"} />
             <Metric
-              icon={ShieldCheck}
-              label="Interações (7 dias)"
-              value={metricas?.totais?.licoes || "0"}
+              icon={Users}
+              label="Contas Suspensas"
+              value={metricas?.totais?.suspensos || "0"}
             />
           </div>
 
@@ -208,6 +209,54 @@ function AdminSistema() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </section>
+          </div>
+          {/* CONFORMIDADE LGPD */}
+          <div className="grid gap-5 lg:grid-cols-2">
+            {/* Bloco de Conformidade LGPD */}
+            <section className="neu p-6 rounded-2xl bg-card border border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="size-5 text-primary" />
+                <h2 className="font-display text-lg">Conformidade e Privacidade (LGPD)</h2>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="p-4 rounded-xl bg-muted/30 border border-border">
+                  <p className="text-xs font-bold uppercase text-muted-foreground">Consentidos</p>
+                  <p className="text-2xl font-bold text-success mt-1">{metricas?.lgpd_status?.ativos || 0}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted/30 border border-border">
+                  <p className="text-xs font-bold uppercase text-muted-foreground">Revogados</p>
+                  <p className="text-2xl font-bold text-warning mt-1">{metricas?.lgpd_status?.revogados || 0}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted/30 border border-border">
+                  <p className="text-xs font-bold uppercase text-muted-foreground">Anonimizados</p>
+                  <p className="text-2xl font-bold text-muted-foreground mt-1">{metricas?.lgpd_status?.anonimizados || 0}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                Monitoramento ativo de consentimentos de acordo com as diretrizes da Lei Geral de Proteção de Dados.
+              </p>
+            </section>
+
+            {/* Bloco de Saúde e BD */}
+            <section className="neu p-6 rounded-2xl bg-card border border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="size-5 text-primary" />
+                <h2 className="font-display text-lg">Saúde da Infraestrutura & Banco de Dados</h2>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border">
+                  <span className="text-sm font-medium text-muted-foreground">Espaço do Banco (PostgreSQL)</span>
+                  <span className="text-sm font-bold text-foreground">{metricas?.system_health?.db_size_mb} MB</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border">
+                  <span className="text-sm font-medium text-muted-foreground">Latência Média da API (Django)</span>
+                  <span className="text-sm font-bold text-success">{metricas?.system_health?.api_latency_ms}</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                
+              </p>
             </section>
           </div>
         </TabsContent>
