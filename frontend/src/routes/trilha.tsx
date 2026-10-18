@@ -88,7 +88,7 @@ function Trilha() {
                         params={{ lessonId: lesson.id }}
                         disabled={isLocked}
                         className={cn(
-                          "focus-ring flex items-center gap-4 rounded-lg p-4 transition-all active:scale-95",
+                          "focus-ring flex h-full items-center gap-4 rounded-lg p-4 transition-all active:scale-95",
                           isLocked
                             ? "cursor-not-allowed opacity-60 grayscale"
                             : "bg-card shadow-neu-sm hover:shadow-neu",
@@ -97,7 +97,7 @@ function Trilha() {
                       >
                         <div
                           className={cn(
-                            "flex size-14 items-center justify-center rounded-lg",
+                            "flex size-14 shrink-0 items-center justify-center rounded-lg",
                             isLocked
                               ? "bg-muted text-muted-foreground"
                               : isCompleted
@@ -113,9 +113,11 @@ function Trilha() {
                             <Play className="ml-1 size-7" />
                           )}
                         </div>
-                        <div>
-                          <p className="font-display text-lg">{lesson.title}</p>
-                          <p className="text-sm text-muted-foreground">{lesson.subtitle}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-lg leading-snug">{lesson.title}</p>
+                          <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                            {lesson.subtitle}
+                          </p>
                         </div>
                       </Link>
                     </li>

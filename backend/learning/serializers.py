@@ -6,9 +6,12 @@ from exercises.serializers import ExercicioSerializer
 class AulaSerializer(serializers.ModelSerializer):
     exercicios = serializers.SerializerMethodField()
 
-    # Aliases de leitura para compatibilidade direta com o frontend (trilha.tsx / licao.$lessonId.tsx)
+    # Aliases para o frontend:
+    # - subtitle: resumo curto para o card da Trilha
+    # - theory: texto didático completo para o Guia Teórico dentro da Lição
     title = serializers.CharField(source='titulo', read_only=True)
-    subtitle = serializers.CharField(source='conteudo_teorico', read_only=True)
+    subtitle = serializers.SerializerMethodField()
+    theory = serializers.CharField(source='conteudo_teorico', read_only=True)
     exercises = serializers.SerializerMethodField()
 
     class Meta:
@@ -25,8 +28,18 @@ class AulaSerializer(serializers.ModelSerializer):
             # Aliases frontend
             'title',
             'subtitle',
+            'theory',
             'exercises',
         ]
+
+    def get_subtitle(self, obj):
+        if isinstance(obj.partitura_dados, dict) and obj.partitura_dados.get('resumo'):
+            return obj.partitura_dados['resumo']
+        texto = (obj.conteudo_teorico or '').strip()
+        primeira_linha = texto.split('\n')[0].strip()
+        if len(primeira_linha) > 95:
+            return primeira_linha[:92].rstrip() + '...'
+        return primeira_linha
 
     def get_exercicios(self, obj):
         qs = obj.exercicios.filter(ativo=True)
@@ -43,7 +56,6 @@ class AulaSerializer(serializers.ModelSerializer):
 class ModuloSerializer(serializers.ModelSerializer):
     aulas = serializers.SerializerMethodField()
 
-    # Aliases de leitura para compatibilidade direta com o frontend (trilha.tsx)
     index = serializers.IntegerField(source='ordem', read_only=True)
     title = serializers.CharField(source='titulo', read_only=True)
     description = serializers.CharField(source='descricao', read_only=True)
