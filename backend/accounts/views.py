@@ -427,41 +427,140 @@ class AdminSystemMetricsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.role not in ['admin-sistema', 'sistema']:
-            return Response({"error": "Acesso restrito a administradores de sistema."}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.role not in ['admin-sistema', 'sistema'] and not request.user.is_superuser:
+            return Response(
+                {"error": "Acesso restrito a administradores de sistema."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-        # FILTRO LGPD: Ignora usuários anonimizados pela nova máscara de asteriscos
+        from django.db.models import Count, Q
+        from audit.models import AuditLog
+        from exercises.models import Exercicio, TentativaExercicio
+        from glossary.models import Glossario
+        from learning.models import Modulo, Aula
+        from music.models import Musica
+        from progress.models import ProgressoAula
+
+        # Filtra usuários válidos (exclui contas anonimizadas pela LGPD)
         valid_users = User.objects.exclude(email__endswith="@anon.com")
+        anonimizados_count = User.objects.filter(email__endswith="@anon.com").count()
 
         total_users = valid_users.count()
         active_users = valid_users.filter(is_active=True).count()
+        suspended_users = valid_users.filter(is_active=False).count()
+        users_2fa = valid_users.filter(is_2fa_enabled=True).count()
 
+        # Distribuição por papéis (RBAC)
+        distribuicao_papeis = {
+            "estudantes": valid_users.filter(role__in=["estudante", "usuario"]).count(),
+            "admins_conteudo": valid_users.filter(role__in=["admin-conteudo", "conteudo"]).count(),
+            "admins_sistema": valid_users.filter(role__in=["admin-sistema", "sistema"]).count(),
+        }
+
+        # Métricas pedagógicas globais
+        total_licoes_concluidas = ProgressoAula.objects.filter(concluida=True).count()
+        total_tentativas = TentativaExercicio.objects.count()
+        total_acertos = TentativaExercicio.objects.filter(acertou=True).count()
+        precisao_global = (
+            round((total_acertos / total_tentativas) * 100, 1) if total_tentativas > 0 else 0.0
+        )
+
+        # Acervo cadastrado na plataforma
+        acervo = {
+            "unidades": Modulo.objects.filter(ativo=True).count(),
+            "aulas": Aula.objects.filter(ativa=True).count(),
+            "exercicios": Exercicio.objects.filter(ativo=True).count(),
+            "glossario": Glossario.objects.count(),
+            "gravacoes_playground": Musica.objects.count(),
+        }
+
+        # Série histórica dos últimos 7 dias
+        hoje = timezone.localdate()
+        dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
         atividade_diaria = []
+
         for i in range(6, -1, -1):
-            date = timezone.now() - timedelta(days=i)
-            dia_str = date.strftime("%a") 
-            
-            ativos_dia = valid_users.filter(last_login__date=date.date()).count()
-            
-            try:
-                criados_dia = valid_users.filter(date_joined__date=date.date()).count()
-            except:
-                criados_dia = valid_users.filter(created_at__date=date.date()).count()
+            dia_ref = hoje - timedelta(days=i)
+            dia_label = f"{dias_semana[dia_ref.weekday()]} ({dia_ref.strftime('%d/%m')})"
+
+            ativos_dia = valid_users.filter(last_login__date=dia_ref).count()
+            novos_dia = valid_users.filter(created_at__date=dia_ref).count()
+            aulas_dia = ProgressoAula.objects.filter(
+                concluida=True, updated_at__date=dia_ref
+            ).count()
+            tentativas_dia = TentativaExercicio.objects.filter(
+                realizada_em__date=dia_ref
+            ).count()
 
             atividade_diaria.append({
-                "dia": dia_str,
+                "dia": dia_label,
                 "ativos": ativos_dia,
-                "licoes": criados_dia * 3 # Espaço reservado para o módulo de progresso
+                "novos_registros": novos_dia,
+                "licoes": aulas_dia,
+                "exercicios": tentativas_dia,
             })
 
-        return Response({
-            "totais": {
-                "usuarios": total_users,
-                "ativos": active_users,
-                "licoes": sum([d["licoes"] for d in atividade_diaria]) 
+        # Desempenho agregado por tópico musical
+        por_topico_qs = (
+            TentativaExercicio.objects.values("exercicio__tag_topico")
+            .annotate(
+                total=Count("id"),
+                acertos=Count("id", filter=Q(acertou=True)),
+            )
+            .order_by("-total")
+        )
+        desempenho_topicos = []
+        for item in por_topico_qs:
+            topico = item["exercicio__tag_topico"] or "Geral"
+            tot = item["total"]
+            ac = item["acertos"]
+            desempenho_topicos.append({
+                "topico": topico,
+                "total": tot,
+                "precisao": round((ac / tot) * 100, 1) if tot > 0 else 0,
+            })
+
+        # Eventos de auditoria e segurança (últimos 7 dias + 10 registros mais recentes)
+        sete_dias_atras = timezone.now() - timedelta(days=7)
+        eventos_7d = AuditLog.objects.filter(timestamp__gte=sete_dias_atras).count()
+        falhas_login_7d = AuditLog.objects.filter(
+            timestamp__gte=sete_dias_atras,
+            action__in=["FAILED_LOGIN_ATTEMPT", "BLOCKED_SUSPENDED_USER_LOGIN", "FAILED_2FA_ATTEMPT"],
+        ).count()
+
+        ultimos_logs = [
+            {
+                "id": str(log.id),
+                "action": log.action,
+                "usuario": log.user.email if log.user else "Anônimo / Sistema",
+                "ip_address": log.ip_address or "0.0.0.0",
+                "timestamp": log.timestamp.strftime("%d/%m/%Y %H:%M"),
+            }
+            for log in AuditLog.objects.select_related("user").order_by("-timestamp")[:10]
+        ]
+
+        return Response(
+            {
+                "totais": {
+                    "usuarios": total_users,
+                    "ativos": active_users,
+                    "suspensos": suspended_users,
+                    "usuarios_2fa": users_2fa,
+                    "anonimizados_lgpd": anonimizados_count,
+                    "licoes": total_licoes_concluidas,
+                    "tentativas_exercicios": total_tentativas,
+                    "precisao_global": precisao_global,
+                    "eventos_auditoria_7d": eventos_7d,
+                    "falhas_autenticacao_7d": falhas_login_7d,
+                },
+                "distribuicao_papeis": distribuicao_papeis,
+                "acervo": acervo,
+                "grafico": atividade_diaria,
+                "desempenho_topicos": desempenho_topicos,
+                "ultimos_logs": ultimos_logs,
             },
-            "grafico": atividade_diaria
-        }, status=status.HTTP_200_OK)
+            status=status.HTTP_200_OK,
+        )
 
 class AdminSystemUsersView(APIView):
     permission_classes = [IsAuthenticated]
