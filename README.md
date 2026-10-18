@@ -146,15 +146,15 @@ npm run build
 
 ## Documentação Complementar
 
-- [Documentação do Backend](https://www.google.com/search?q=backend/README.md): módulos Django, variáveis de ambiente, comandos administrativos, RBAC e conformidade LGPD.
-- [Documentação do Frontend](https://www.google.com/search?q=frontend/README.md): rotas, componentes musicais (`Stave`, `VirtualPiano`, `GlossaryDiagram`) e fluxo de estado.
-- [Referência da API REST](https://www.google.com/search?q=backend/docs/API.md): contratos de requisição e resposta de todos os endpoints `/api/v1/`.
+- [Documentação do Backend](backend/README.md): módulos Django, variáveis de ambiente, comandos administrativos, RBAC e conformidade LGPD.
+- [Documentação do Frontend](frontend/README.md): rotas, componentes musicais (`Stave`, `VirtualPiano`, `GlossaryDiagram`) e fluxo de estado.
+- [Referência da API REST](backend/docs/API.md): contratos de requisição e resposta de todos os endpoints `/api/v1/`.
 
 ---
 
 ## Licença
 
-Distribuído sob a licença definida no arquivo [`LICENSE`](https://www.google.com/search?q=LICENSE).
+Distribuído sob a licença definida no arquivo [`LICENSE`](LICENCE).
 
 ## Autores e Orientação
 
