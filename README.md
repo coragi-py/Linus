@@ -1,286 +1,172 @@
 # Linus
 
-> Plataforma web de apoio ao aprendizado de música, organizada como uma aplicação cliente-servidor com frontend TypeScript e API backend em Django.
+Plataforma web interativa para o ensino autônomo e introdutório de teoria musical, desenvolvida como Projeto Final de Curso (PFC) em Engenharia de Software na Universidade de Mogi das Cruzes (UMC).
 
-## Visão geral
+## Visão Geral
 
-O Linus é uma plataforma de aprendizagem de teoria musical, trilhas e lições, prática, glossário, triagem de nível, acompanhamento de progresso, gamificação e áreas administrativas. O projeto foi estruturado em dois componentes principais:
+O **Linus** integra conteúdos didáticos progressivos, triagem inicial de nivelamento, piano virtual controlado pelo teclado físico com síntese de áudio em tempo real, partituras dinâmicas, exercícios com validação imediata, glossário visual, área de prática livre (_Playground_), gamificação leve e assistente didático baseado em IA.
 
-- **Frontend:** aplicação TypeScript com Vite e TanStack Router, responsável pelas telas, interação, validações de experiência e consumo da API.
-- **Backend:** API Django modular, responsável por identidade, regras de domínio, persistência, auditoria e serviços de segurança.
+A solução adota uma arquitetura web desacoplada:
 
-## Índice
+- **Frontend (`frontend/`):** Single Page Application (SPA) em React, TypeScript, Vite, TanStack Router, Tailwind CSS, Tone.js e VexFlow.
+- **Backend (`backend/`):** Monólito modular em Python, Django e Django REST Framework, com persistência em PostgreSQL, autenticação JWT/Google OAuth 2.0, envio de e-mails transacionais via Brevo SMTP e integração com Google Gemini API.
 
-- [Linus](#linus)
-  - [Visão geral](#visão-geral)
-  - [Índice](#índice)
-  - [1. Funcionalidades mapeadas](#1-funcionalidades-mapeadas)
-  - [2. Arquitetura](#2-arquitetura)
-  - [Estrutura de diretórios](#estrutura-de-diretórios)
-  - [3. Pré-requisitos](#3-pré-requisitos)
-  - [4. Configuração local](#4-configuração-local)
-    - [1. Obter o código](#1-obter-o-código)
-    - [2. Preparar as variáveis de ambiente](#2-preparar-as-variáveis-de-ambiente)
-    - [3. Iniciar os serviços do Docker](#3-iniciar-os-serviços-do-docker)
-    - [4. Configurar e iniciar o backend](#4-configurar-e-iniciar-o-backend)
-    - [5. Configurar e iniciar o frontend](#5-configurar-e-iniciar-o-frontend)
-    - [6. Parar ou limpar o ambiente](#6-parar-ou-limpar-o-ambiente)
-  - [5. Segurança e conformidade](#5-segurança-e-conformidade)
-  - [6. Qualidade e testes](#6-qualidade-e-testes)
-  - [7. Erros e soluções de problemas conhecidos](#7-erros-e-soluções-de-problemas-conhecidos)
-  - [8. Documentação complementar](#8-documentação-complementar)
-  - [9. Licença](#9-licença)
-  - [10. Equipe do projeto](#10-equipe-do-projeto)
+---
 
-## 1. Funcionalidades mapeadas
-
-| Área                 | Responsabilidade                                                              |
-| -------------------- | ----------------------------------------------------------------------------- |
-| Contas               | Cadastro, autenticação, recuperação de senha e gestão do perfil do usuário    |
-| Aprendizagem         | Trilhas, lições e conteúdos de aprendizagem                                   |
-| Exercícios e prática | Execução de atividades e recursos de prática musical                          |
-| Música               | Gravação de músicas personalizadas através da tela de playground              |
-| Glossário            | Consulta de termos e conceitos musicais                                       |
-| Triagem              | Identificação e classificação inicial do usuário                              |
-| Progresso            | Acompanhamento da evolução do estudante                                       |
-| Gamificação          | Mecânicas de progresso, recompensas ou indicadores                            |
-| Auditoria            | Registro de eventos relevantes do sistema                                     |
-| Administração        | Gestão de conteúdo e de parâmetros do sistema                                 |
-| Assistente de IA     | Componente de interface e módulo `ai_gateway` reservado para integração de IA |
-
-## 2. Arquitetura
-
-```text
-Navegador
-    |
-    | HTTP(S) / JSON
-    v
-Frontend (TypeScript + Vite + TanStack Router)
-    |- rotas e páginas
-    |- componentes de interface
-    |- contexto de aplicação
-    |- recursos de áudio e música
-    |
-    v
-Backend (Django)
-    |- core: configurações, URLs e exceções
-    |- accounts: identidade, credenciais e recuperação de senha
-    |- módulos de domínio: learning, music, exercises, glossary,
-    |   placement, progress e gamification
-    |- audit: eventos e serviços de auditoria
-    |- ai_gateway: limite de integração com serviços de IA
-    |
-    v
-PostgreSQL
-```
-
-A divisão por aplicativos Django favorece separação de responsabilidades. O frontend adota roteamento baseado em arquivos, com páginas públicas, autenticadas e administrativas agrupadas em `src/routes`.
-
-## Estrutura de diretórios
+## Arquitetura e Estrutura de Diretórios
 
 ```text
 Linus/
-├── .github/workflows/        # Automação de testes do backend
+├── .github/workflows/
+│   └── testes-backend.yml    # Pipeline CI/CD (testes automatizados e cobertura)
 ├── backend/
-│   ├── core/                 # Configuração Django, URLs e exceções
-│   ├── accounts/             # Usuários, autenticação e segurança
-│   ├── audit/                # Auditoria e serviços de log
-│   ├── learning/             # Trilhas, lições e aprendizagem
-│   ├── music/                # Domínio musical
-│   ├── exercises/            # Exercícios
-│   ├── placement/            # Triagem
-│   ├── progress/             # Progresso
-│   ├── gamification/         # Gamificação
-│   ├── glossary/             # Glossário
-│   ├── ai_gateway/           # Integração de IA
-│   ├── requirements.txt      # Dependências Python
-│   └── manage.py             # CLI do Django
+│   ├── core/                 # Configurações globais, roteamento raiz (/api/v1/) e exceções
+│   ├── accounts/             # Usuários (RBAC), autenticação JWT/OAuth, 2FA, LGPD e e-mails
+│   ├── placement/            # Triagem inicial de nivelamento pedagógico
+│   ├── learning/             # Unidades (módulos) e lições (aulas) da trilha didática
+│   ├── exercises/            # Exercícios interativos e histórico de tentativas
+│   ├── progress/             # Acompanhamento de conclusão de aulas e taxas de acerto
+│   ├── gamification/         # Ofensiva diária (streaks), pontuação, badges e lembretes
+│   ├── glossary/             # Termos musicais, definições e diagramas vetoriais
+│   ├── music/                # Gravação de sequências musicais no Playground
+│   ├── ai_gateway/           # Integração protegida com a Google Gemini API
+│   ├── audit/                # Logs imutáveis de auditoria e eventos de segurança
+│   ├── common/               # Recursos compartilhados
+│   ├── docs/API.md           # Especificação dos endpoints REST
+│   ├── manage.py
+│   └── requirements.txt
+├── docs/                     # Documentação complementar de integrações e BPMN
 ├── frontend/
-│   ├── src/components/       # Componentes reutilizáveis e UI
-│   ├── src/context/          # Estado compartilhado
-│   ├── src/lib/              # Utilitários, áudio e regras auxiliares
-│   ├── src/routes/           # Rotas e páginas da aplicação
-│   ├── package.json          # Dependências e scripts Node.js
-│   └── vite.config.ts        # Configuração de build/desenvolvimento
-├── docker-compose.yml        # Orquestração local por Docker (PostgreSQL)
-└── README.md                 # Documentação principal
+│   ├── src/components/       # Componentes de domínio (Stave, VirtualPiano, AppShell, AiAssistant) e UI
+│   ├── src/context/          # Estado global e sincronização com a API (LinusContext)
+│   ├── src/data/             # Estruturas tipadas e currículo de fallback
+│   ├── src/lib/              # Síntese de áudio (Tone.js), teoria musical e utilitários
+│   ├── src/routes/           # Rotas da aplicação (TanStack Router)
+│   ├── package.json
+│   └── vite.config.ts
+├── docker-compose.yml        # Orquestração local do banco de dados PostgreSQL
+└── README.md
+
 ```
 
-## 3. Pré-requisitos
+---
 
-- Git
-- Python 3.12 ou versão compatível com as dependências do backend
-- Node.js LTS e npm
-- PostgreSQL
-- Docker e Docker Compose, caso opte por executar os serviços em contêineres
+## Pré-requisitos
 
-## 4. Configuração local
+- **Git**
+- **Python 3.14.***
+- **Node.js 24 (LTS)** e **npm**
+- **Docker** e **Docker Compose** (ou instância local do PostgreSQL 15+)
 
-### 1. Obter o código
+---
+
+## Configuração e Execução Local
+
+### 1. Clonar o repositório e configurar variáveis de ambiente
 
 ```bash
 git clone https://github.com/coragi-py/Linus.git
 cd Linus
-git checkout nome-da-branch
-```
-
-### 2. Preparar as variáveis de ambiente
-
-A partir da raiz do projeto, copie o exemplo do backend e substitua os placeholders por valores locais. Não versione `.env`.
-
-```bash
 cp backend/.env.example backend/.env
+
 ```
 
-No PowerShell:
+No Windows PowerShell:
 
 ```powershell
 Copy-Item backend/.env.example backend/.env
+
 ```
 
-### 3. Iniciar os serviços do Docker
+Preencha os valores locais no arquivo `backend/.env`.
 
-**Antes de executar `migrate`**, na raiz do repositório:
+### 2. Iniciar o banco de dados PostgreSQL via Docker
 
 ```bash
 docker compose up -d
+
 ```
 
-O `-d` deixa os serviços em segundo plano. Confira se subiram e, se necessário, examine os logs:
-
-```bash
-docker compose ps
-docker compose logs --tail=100
-```
-
-### 4. Configurar e iniciar o backend
-
-Em um terminal, partindo da raiz:
+### 3. Configurar e iniciar o Backend (Porta 8000)
 
 ```bash
 cd backend
 python -m venv .venv
-```
 
-Ative o ambiente virtual:
-
-```bash
-# Linux/macOS
+# Ativar ambiente virtual (Linux/macOS)
 source .venv/bin/activate
 
-# Windows PowerShell
+# Ativar ambiente virtual (Windows PowerShell)
 .venv\Scripts\Activate.ps1
-```
 
-Instale as dependências e aplique as migrações **após o banco estar pronto**:
-
-```bash
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
+
 ```
 
-### 5. Configurar e iniciar o frontend
+> Ao executar `python manage.py migrate`, o sistema cria todas as tabelas e executa automaticamente as _migrations_ de carga inicial: 4 unidades didáticas, 8 lições com guia teórico e partitura demonstrativa, 32 exercícios interativos, 3 medalhas, 8 questões de triagem, 31 termos do glossário musical e 1.000 contas de estudantes.
 
-Em outro terminal partindo da raiz:
+### 4. Configurar e iniciar o Frontend (Porta 8080)
+
+Em um novo terminal:
 
 ```bash
 cd frontend
-npm ci
+npm install
 npm run dev
+
 ```
 
-Use `npm install` apenas se a instalação reprodutível por `npm ci` não for adequada ao seu ambiente.
-
-### 6. Parar ou limpar o ambiente
-
-Para interromper os contêineres sem descartar os dados persistidos nos volumes:
-
-```bash
-docker compose down
-```
-
-**Somente se precisar reiniciar o ambiente do zero**, na raiz do projeto:
-
-```bash
-docker compose down -v
-```
-
-**Atenção:** `down -v` remove também os volumes gerenciados pelo Compose, incluindo dados persistidos do PostgreSQL caso o banco use um volume do projeto. Isso pode apagar contas, conteúdo e histórico local de forma irrecuperável sem backup. Não execute em ambiente com dados que você precisa preservar. O comando não substitui backup e não apaga automaticamente arquivos externos ou volumes declarados como externos. Para retomar do zero, execute `docker compose up -d` e, após o banco ficar pronto, `python manage.py migrate` novamente.
+A aplicação estará disponível em `http://localhost:8080`.
 
 ---
 
-## 5. Segurança e conformidade
+## Testes e Qualidade
 
-Módulo dedicado de contas, hasher customizado, serviço de segurança, recuperação por e-mail, módulo de auditoria e testes em diversos aplicativos.
-
-A validação cobre:
-
-- Algoritmo de hash, custo, salt e armazenamento de senhas.
-- Fluxo de login, expiração de sessão ou token, logout, 2FA e mitigação contra força bruta.
-- Geração, expiração, uso único e auditoria de tokens de recuperação de senha.
-- HTTPS/TLS em produção, redirecionamento HTTP → HTTPS e cabeçalhos de segurança.
-- Proteção de segredos, dados em repouso e chaves criptográficas.
-- Inventário de dados pessoais, finalidade, consentimento, revogação e direitos do titular conforme LGPD.
-- Integridade, retenção e análise dos logs de auditoria.
-
-Consulte os READMEs de backend e frontend para o inventário de evidências.
-
-## 6. Qualidade e testes
-
-A árvore do projeto contém testes em `accounts`, `audit`, `glossary`, `music` e `placement`, além de workflow em `.github/workflows/testes-backend.yml`. Antes da entrega, execute ao menos:
+Para executar a suíte de testes automatizados e verificar a cobertura de código do backend:
 
 ```bash
 cd backend
-python manage.py test
+coverage run --omit="*/migrations/*,*/tests/*,manage.py" manage.py test accounts audit glossary music placement learning exercises gamification progress
+coverage report -m
+
 ```
 
-Valide também fluxos críticos manualmente: registro, login, logout, recuperação de senha, permissões administrativas, consulta de dados pessoais, operação de trilhas/lições e tratamento de falhas.
+Para validar a tipagem e o linter do frontend:
 
-## 7. Erros e soluções de problemas conhecidos
+```bash
+cd frontend
+npm run lint
+npm run build
 
-Os itens abaixo são cenários frequentes de configuração local e **não** um registro de bugs confirmados no projeto. Antes de alterar código, confira `docker compose ps`, os logs, as portas e as variáveis de ambiente.
+```
 
-| Sintoma                                                            | Causa possível                                                                       | Verificação e solução                                                                                                                                                                              |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `connection refused` ou `could not connect to server` no `migrate` | Banco parado, ainda iniciando, host/porta incorretos                                 | Rode `docker compose up -d`, confira `docker compose ps` e `docker compose logs --tail=100`; aguarde o banco e revise `DB_HOST`, `DB_PORT` e `DATABASE_URL` conforme Django local ou em contêiner. |
-| `password authentication failed` no PostgreSQL                     | Senha, usuário ou URL divergentes; volume antigo inicializado com outras credenciais | Compare `.env`, `DATABASE_URL` e configuração do Compose. Se houver dados importantes, preserve-os e corrija credenciais sem apagar volumes; `down -v` só em ambiente descartável.                 |
-| `port is already allocated`                                        | Porta já ocupada por outro serviço                                                   | Identifique o processo/contêiner na porta, pare-o ou mude o mapeamento no Compose e atualize `.env` correspondente.                                                                                |
-| `no such table` ou tabela ausente                                  | Migrações não aplicadas na mesma base acessada pela API                              | Confirme que banco está pronto, revise a URL e execute `python manage.py migrate` no ambiente que executa o backend.                                                                               |
-| Erro de CORS no navegador                                          | `CORS_ALLOWED_ORIGINS` não corresponde à origem real do frontend                     | Confira esquema (`http`/`https`), host e porta informados pelo Vite; atualize a variável e reinicie o backend.                                                                                     |
-| Frontend não acessa a API                                          | URL incorreta, backend não iniciado ou porta divergente                              | Confirme `runserver`, endpoint requisitado e configuração de URL usada no frontend; use DevTools para identificar a requisição que falhou.                                                         |
-| Erro de configuração do Django ou `SECRET_KEY` ausente             | `.env` não criado ou não carregado                                                   | Confirme a localização de `backend/.env`, variáveis exigidas em `core/settings.py` e reinicie o processo. Não coloque a chave no Git.                                                              |
-| Falha de envio de e-mail                                           | SMTP não configurado, credencial inválida ou serviço indisponível                    | Confira as variáveis `BREVO_SMTP_*`, remetente autorizado e logs do backend; nunca imprima senhas ou tokens completos.                                                                             |
-| `npm ci` falha                                                     | Node/npm incompatíveis ou `package-lock.json` fora de sincronia                      | Confira as versões esperadas pelo `package.json`, tente novamente com ambiente limpo e ajuste lockfile somente se necessário e intencional.                                                        |
-| PowerShell bloqueia ativação do `.venv`                            | Política local de execução de scripts                                                | Use um terminal autorizado ou chame diretamente `.venv\Scripts\python.exe manage.py migrate`; não altere políticas globais sem necessidade.                                                        |
-| Dados desapareceram depois de reiniciar                            | Execução anterior de `docker compose down -v` ou ausência de volume persistente      | Verifique volumes em `docker-compose.yml`; restaure backup, se existir. `down -v` foi projetado para remoção de volumes do projeto.                                                                |
+---
 
-## 8. Documentação complementar
+## Documentação Complementar
 
-- [Documentação Frontend](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
-- [Documentação Backend](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
-- [Documentação da API](backend/docs/API.md): métodos, payloads e respostas HTTP.
+- [Documentação do Backend](backend/README.md): módulos Django, variáveis de ambiente, comandos administrativos, RBAC e conformidade LGPD.
+- [Documentação do Frontend](frontend/README.md): rotas, componentes musicais (`Stave`, `VirtualPiano`, `GlossaryDiagram`) e fluxo de estado.
+- [Referência da API REST](backend/docs/API.md): contratos de requisição e resposta de todos os endpoints `/api/v1/`.
 
-## 9. Licença
+---
 
-Consulte o arquivo [`LICENSE`](LICENSE) do repositório.
+## Licença
 
-## 10. Equipe do projeto
+Distribuído sob a licença definida no arquivo [`LICENSE`](LICENSE).
 
-**Alunos:**
+## Autores e Orientação
+
+**Autores:**
 
 - Anny Gabriely Souza do Nascimento
 - Antonio Luiz Lins Neto
 - Fábio Yuuki Saruwataru
 
-**Orientador:**
+**Orientação:**
 
-- Prof. Leonardo Cavalcante Alvino
+- **Orientador:** Prof. Leonardo Cavalcante Alvino
+- **Coorientador:** Prof. Alessandro da Silva Horas
 
-**Co-orientador:**
-
-- Prof. Alessandro da Silva Horas
-
-**Instituição:**
-
-- UMC - Universidade de Mogi das Cruzes (2026)
+**Instituição:** Universidade de Mogi das Cruzes (UMC) — Bacharelado em Engenharia de Software (2026).
