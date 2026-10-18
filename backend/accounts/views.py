@@ -1,3 +1,4 @@
+# Adicionando view de avatar, por Anny em 11/10.
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,6 +23,10 @@ from accounts.serializers import (
 from accounts.services.security_service import SecurityService
 from accounts.services.email_service import EmailService
 from audit.services.audit_service import AuditService
+
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserProfileSerializer
 
 User = get_user_model()
 
@@ -548,3 +553,10 @@ class AdminSystemUsersView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Erro interno ao atualizar: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated] 
+
+    #Atualiza o utilizador associado a sessão
+    def get_object(self):
+        return self.request.user
