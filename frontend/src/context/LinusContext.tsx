@@ -177,6 +177,8 @@ export function LinusProvider({ children }: { children: ReactNode }) {
               id: String(l.id),
               title: l.title ?? l.titulo ?? "",
               subtitle: l.subtitle ?? l.conteudo_teorico ?? "",
+              theory: l.conteudo_teorico ?? l.subtitle ?? "",
+              partitura_dados: l.partitura_dados ?? null,
               exercises: (l.exercises ?? l.exercicios ?? []).map((e: any) => ({
                 id: String(e.id),
                 kind: e.kind ?? e.tipo ?? "multiple-choice",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Heart, PartyPopper, Volume2, X } from "lucide-react";
+import { BookOpen, ArrowRight, Heart, PartyPopper, Volume2, X } from "lucide-react";
 import { Stave } from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
 import { type Exercise } from "@/data/curriculum";
@@ -16,12 +16,7 @@ export const Route = createFileRoute("/licao/$lessonId")({
       {
         name: "description",
         content:
-          "Exercícios interativos de teoria musical com pauta dinâmica, piano virtual e validação instantânea.",
-      },
-      { property: "og:title", content: "Lição interativa — Linus" },
-      {
-        property: "og:description",
-        content: "Resolva desafios de leitura, intervalos e acordes com retorno sonoro imediato.",
+          "Aula interativa de teoria musical com explicação guiada, exemplo sonoro na pauta e exercícios práticos.",
       },
     ],
   }),
@@ -38,6 +33,8 @@ function LessonPage() {
 
   const found = useMemo(() => findLessonById(lessonId), [findLessonById, lessonId]);
 
+  // Começa na etapa teórica ("teoria") antes de ir para os exercícios ("pratica")
+  const [etapaAula, setEtapaAula] = useState<"teoria" | "pratica">("teoria");
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
   const [selected, setSelected] = useState<string | null>(null);
@@ -48,13 +45,22 @@ function LessonPage() {
 
   useEffect(() => {
     refillHearts();
+    setEtapaAula("teoria");
+    setIndex(0);
+    setStatus("idle");
+    setSelected(null);
+    setBuilt([]);
+    setFinished(false);
+    setAcertos(0);
     startTimeRef.current = Date.now();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId]);
 
   useEffect(() => {
-    startTimeRef.current = Date.now();
-  }, [index]);
+    if (etapaAula === "pratica") {
+      startTimeRef.current = Date.now();
+    }
+  }, [index, etapaAula]);
 
   if (!found || found.lesson.exercises.length === 0) {
     return (
@@ -70,7 +76,24 @@ function LessonPage() {
   const { lesson, unit } = found;
   const topic = unit.title.replace(/^Unidade \d+: /, "");
   const ex: Exercise = lesson.exercises[index]!;
-  const progress = ((index + (status !== "idle" ? 1 : 0)) / lesson.exercises.length) * 100;
+  const progress =
+    etapaAula === "teoria"
+      ? 5
+      : ((index + (status !== "idle" ? 1 : 0)) / lesson.exercises.length) * 100;
+
+  const textoTeorico = lesson.theory || lesson.subtitle || "";
+  const paragrafosTeoria = textoTeorico
+    .split("\n\n")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const demoNotes: string[] = Array.isArray(lesson.partitura_dados?.notes)
+    ? lesson.partitura_dados!.notes!
+    : ex.stave || ["C4", "D4", "E4", "F4", "G4"];
+  const demoClef = lesson.partitura_dados?.clef || "treble";
+  const demoCaption =
+    lesson.partitura_dados?.caption ||
+    "Ouça e observe as notas de referência na pauta antes de iniciar os exercícios.";
 
   function validar(resposta: string) {
     if (status !== "idle") return;
@@ -113,7 +136,7 @@ function LessonPage() {
           </span>
           <h1 className="font-display text-3xl">Lição concluída!</h1>
           <p className="mt-2 text-muted-foreground">
-            {acertos} de {lesson.exercises.length} exercícios corretos
+            Você acertou {acertos} de {lesson.exercises.length} exercícios práticos nesta aula.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
@@ -156,9 +179,20 @@ function LessonPage() {
           >
             <div
               className="h-full rounded-full bg-success transition-[width] duration-500"
-              style={{ width: `${Math.max(progress, 4)}%` }}
+              style={{ width: `${Math.max(progress, 5)}%` }}
             />
           </div>
+
+          {etapaAula === "pratica" && (
+            <button
+              type="button"
+              onClick={() => setEtapaAula("teoria")}
+              className="focus-ring flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-primary hover:bg-muted"
+            >
+              <BookOpen className="size-3.5" /> Rever Teoria
+            </button>
+          )}
+
           <p className="flex items-center gap-1" aria-label={`${state.hearts} vidas restantes`}>
             {Array.from({ length: 5 }).map((_, i) => (
               <Heart
@@ -174,131 +208,223 @@ function LessonPage() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-40">
-        <p className="text-sm font-bold uppercase tracking-wide text-primary">{lesson.title}</p>
-        <h1 className="mt-2 font-display text-2xl sm:text-3xl">{ex.prompt}</h1>
+      {/* ================= ETAPA 1: CONTEÚDO TEÓRICO E DEMONSTRAÇÃO SONORA ================= */}
+      {etapaAula === "teoria" ? (
+        <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-24">
+          <div className="neu rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+                <BookOpen className="size-3.5" /> Guia Teórico da Aula · {unit.title}
+              </span>
+              <h1 className="mt-3 font-display text-2xl sm:text-3xl text-foreground">
+                {lesson.title}
+              </h1>
+            </div>
 
-        {ex.stave && (
-          <div className="neu-inset mt-6 flex flex-col items-center gap-3 p-5">
-            <Stave
-              notes={ex.stave}
-              sequential={ex.stave.length > 1}
-              width={420}
-              height={180}
-              scale={1.45}
-              clef="treble"
-            />
-            <button
-              type="button"
-              onClick={() =>
-                void (ex.stave!.length > 1
-                  ? playSequence(ex.stave!)
-                  : playNote(ex.stave![0]!, "2n"))
-              }
-              className="focus-ring flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm font-bold text-primary shadow-neu-sm active:translate-y-0.5"
-            >
-              <Volume2 className="size-4" aria-hidden /> Ouvir
-            </button>
-          </div>
-        )}
-
-        {/* Múltipla escolha / leitura de notas */}
-        {ex.options && (
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {ex.options.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => validar(opt)}
-                disabled={status !== "idle"}
-                className={cn(
-                  "focus-ring rounded-lg bg-background p-4 text-left font-bold shadow-neu-sm transition-transform hover:bg-primary-soft active:translate-y-0.5",
-                  selected === opt && status === "correct" && "bg-success text-success-foreground",
-                  selected === opt &&
-                    status === "wrong" &&
-                    "animate-shake bg-destructive text-destructive-foreground",
-                )}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Toque no piano */}
-        {ex.kind === "keyboard" && (
-          <div className="mt-8">
-            <p className="mb-3 text-sm text-muted-foreground">
-              Toque a tecla correspondente no piano abaixo (mouse ou teclado do computador).
-            </p>
-            <VirtualPiano onNoteOn={(note) => validar(note)} compact />
-          </div>
-        )}
-
-        {/* Construtor de escalas/intervalos */}
-        {ex.kind === "builder" && ex.sequence && (
-          <div className="mt-8 space-y-4">
-            <div className="neu-inset flex min-h-24 flex-wrap items-center gap-2 p-4">
-              {built.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Clique nas notas na ordem correta para montar a sequência.
-                </p>
-              )}
-              {built.map((n, i) => (
-                <span
-                  key={`${n}-${i}`}
-                  className="animate-pop rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+            <div className="space-y-4 text-base leading-relaxed text-foreground/90">
+              {paragrafosTeoria.map((paragrafo, idx) => (
+                <p
+                  key={idx}
+                  className={cn(
+                    idx === 0 && "font-medium text-foreground",
+                    paragrafo.startsWith("💡") &&
+                      "rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm font-medium text-foreground",
+                  )}
                 >
-                  {noteLabelPt(n)}
-                </span>
+                  {paragrafo}
+                </p>
               ))}
             </div>
-            {built.length > 0 && (
-              <div className="neu-inset flex justify-center p-4">
-                <Stave notes={built} sequential width={420} height={150} />
+
+            {/* Demonstração Interativa na Pauta + Síntese Sonora */}
+            {demoNotes.length > 0 && (
+              <div className="neu-inset flex flex-col items-center gap-3 rounded-xl p-5">
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Exemplo Visual e Sonoro na Pauta
+                </span>
+                <Stave
+                  notes={demoNotes}
+                  sequential={demoNotes.length > 1}
+                  width={460}
+                  height={170}
+                  scale={1.35}
+                  clef={demoClef}
+                />
+                <p className="text-center text-xs text-muted-foreground">{demoCaption}</p>
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void (demoNotes.length > 1
+                        ? playSequence(demoNotes)
+                        : playNote(demoNotes[0]!, "2n"))
+                    }
+                    className="focus-ring flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-neu-sm active:translate-y-0.5"
+                  >
+                    <Volume2 className="size-4" aria-hidden /> Ouvir Exemplo Completo
+                  </button>
+                  {demoNotes.map((n, i) => (
+                    <button
+                      key={`${n}-${i}`}
+                      type="button"
+                      onClick={() => void playNote(n, "4n")}
+                      className="focus-ring rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted"
+                    >
+                      ♪ {noteLabelPt(n)} ({n})
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <div className="flex flex-wrap gap-2">
-              {[...ex.sequence]
-                .sort((a, b) => a.localeCompare(b))
-                .map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    disabled={status !== "idle"}
-                    onClick={() => {
-                      void playNote(n);
-                      setBuilt((b) => [...b, n]);
-                    }}
-                    className="focus-ring rounded-lg bg-card px-4 py-3 text-sm font-bold shadow-neu-sm active:translate-y-0.5"
-                  >
-                    {noteLabelPt(n)} {n.slice(-1)}
-                  </button>
-                ))}
-            </div>
-            <div className="flex gap-2">
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                A seguir: <strong>{lesson.exercises.length} exercícios práticos</strong> para fixar
+                este conteúdo.
+              </p>
               <button
                 type="button"
-                onClick={() => setBuilt([])}
-                className="focus-ring rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted"
+                onClick={() => setEtapaAula("pratica")}
+                className="focus-ring flex items-center gap-2 rounded-xl bg-success px-6 py-3.5 font-display text-lg text-success-foreground shadow-neu-sm transition-transform active:translate-y-0.5"
               >
-                Limpar
-              </button>
-              <button
-                type="button"
-                disabled={status !== "idle" || built.length === 0}
-                onClick={() => validar(built.join(","))}
-                className="focus-ring rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-neu-sm disabled:opacity-50"
-              >
-                Conferir sequência
+                Iniciar Prática ({lesson.exercises.length} desafios)
+                <ArrowRight className="size-5" />
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* ================= ETAPA 2: EXERCÍCIOS INTERATIVOS ================= */
+        <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-40">
+          <p className="text-sm font-bold uppercase tracking-wide text-primary">
+            {lesson.title} · Exercício {index + 1} de {lesson.exercises.length}
+          </p>
+          <h1 className="mt-2 font-display text-2xl sm:text-3xl">{ex.prompt}</h1>
+
+          {ex.stave && (
+            <div className="neu-inset mt-6 flex flex-col items-center gap-3 p-5">
+              <Stave
+                notes={ex.stave}
+                sequential={ex.stave.length > 1}
+                width={420}
+                height={180}
+                scale={1.45}
+                clef="treble"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  void (ex.stave!.length > 1
+                    ? playSequence(ex.stave!)
+                    : playNote(ex.stave![0]!, "2n"))
+                }
+                className="focus-ring flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm font-bold text-primary shadow-neu-sm active:translate-y-0.5"
+              >
+                <Volume2 className="size-4" aria-hidden /> Ouvir
+              </button>
+            </div>
+          )}
+
+          {/* Múltipla escolha / leitura de notas */}
+          {ex.options && (
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              {ex.options.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => validar(opt)}
+                  disabled={status !== "idle"}
+                  className={cn(
+                    "focus-ring rounded-lg bg-background p-4 text-left font-bold shadow-neu-sm transition-transform hover:bg-primary-soft active:translate-y-0.5",
+                    selected === opt &&
+                      status === "correct" &&
+                      "bg-success text-success-foreground",
+                    selected === opt &&
+                      status === "wrong" &&
+                      "animate-shake bg-destructive text-destructive-foreground",
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Toque no piano */}
+          {ex.kind === "keyboard" && (
+            <div className="mt-8">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Toque a tecla correspondente no piano abaixo (mouse ou teclado do computador).
+              </p>
+              <VirtualPiano onNoteOn={(note) => validar(note)} compact />
+            </div>
+          )}
+
+          {/* Construtor de escalas/intervalos */}
+          {ex.kind === "builder" && ex.sequence && (
+            <div className="mt-8 space-y-4">
+              <div className="neu-inset flex min-h-24 flex-wrap items-center gap-2 p-4">
+                {built.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Clique nas notas na ordem correta para montar a sequência.
+                  </p>
+                )}
+                {built.map((n, i) => (
+                  <span
+                    key={`${n}-${i}`}
+                    className="animate-pop rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+                  >
+                    {noteLabelPt(n)}
+                  </span>
+                ))}
+              </div>
+              {built.length > 0 && (
+                <div className="neu-inset flex justify-center p-4">
+                  <Stave notes={built} sequential width={420} height={150} />
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {[...ex.sequence]
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      disabled={status !== "idle"}
+                      onClick={() => {
+                        void playNote(n);
+                        setBuilt((b) => [...b, n]);
+                      }}
+                      className="focus-ring rounded-lg bg-card px-4 py-3 text-sm font-bold shadow-neu-sm active:translate-y-0.5"
+                    >
+                      {noteLabelPt(n)} {n.slice(-1)}
+                    </button>
+                  ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBuilt([])}
+                  className="focus-ring rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted"
+                >
+                  Limpar
+                </button>
+                <button
+                  type="button"
+                  disabled={status !== "idle" || built.length === 0}
+                  onClick={() => validar(built.join(","))}
+                  className="focus-ring rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-neu-sm disabled:opacity-50"
+                >
+                  Conferir sequência
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Barra de confirmação inferior */}
-      {status !== "idle" && (
+      {etapaAula === "pratica" && status !== "idle" && (
         <div
           className={cn(
             "fixed bottom-0 left-0 right-0 border-t-2 p-5",
