@@ -54,7 +54,7 @@ Linus/
 ## Pré-requisitos
 
 - **Git**
-- **Python 3.11+**
+- **Python 3.14**
 - **Node.js 20+ (LTS)** e **npm**
 - **Docker** e **Docker Compose** (ou instância local do PostgreSQL 15+)
 
