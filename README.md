@@ -65,7 +65,7 @@ Linus/
 ### 1. Clonar o repositório e configurar variáveis de ambiente
 
 ```bash
-git clone [https://github.com/coragi-py/Linus.git](https://github.com/coragi-py/Linus.git)
+git clone https://github.com/coragi-py/Linus.git
 cd Linus
 cp backend/.env.example backend/.env
 
