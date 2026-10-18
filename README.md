@@ -154,7 +154,7 @@ npm run build
 
 ## Licença
 
-Distribuído sob a licença definida no arquivo [`LICENSE`](LICENCE).
+Distribuído sob a licença definida no arquivo [`LICENSE`](LICENSE).
 
 ## Autores e Orientação
 
