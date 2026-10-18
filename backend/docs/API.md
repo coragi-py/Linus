@@ -1,46 +1,49 @@
-# Backend — Linus
+# Documentação da API REST — Linus
 
-## Mapeamento de APIs
+Todos os endpoints utilizam o prefixo base `/api/v1/` e trafegam dados em formato JSON.
+Para rotas autenticadas, envie o cabeçalho HTTP:
 
-### Regras gerais
+```http
+Authorization: Bearer <access_token>
+Content-Type: application/json
 
-- Requests e responses utilizam JSON, salvo indicação contrária.
-- Para endpoints autenticados, enviar `Authorization: Bearer <access_token>`.
-- Campos marcados como `write_only` são aceitos na requisição e não retornados na resposta.
-- O DRF pode retornar erros de validação como objeto em que cada chave de campo contém uma lista de mensagens.
-- Os exemplos usam valores fictícios.
+```
 
-## Contas e autenticação
+---
 
-Base: `/api/v1/auth/`.
+## Sumário de Prefixos
 
-### Cadastro
+| Prefixo              | Módulo Django                                       | Descrição                                                                         |
+| -------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `/api/v1/auth/`      | `accounts`                                          | Cadastro, login, 2FA, Google OAuth, recuperação de senha, LGPD e gestão de contas |
+| `/api/v1/placement/` | `placement`                                         | Triagem de nivelamento e CRUD administrativo de questões                          |
+| `/api/v1/learning/`  | `learning`, `exercises`, `progress`, `gamification` | Módulos, aulas, exercícios, tentativas, conclusão de lição, progresso e streaks   |
+| `/api/v1/glossary/`  | `glossary`                                          | Termos e diagramas do glossário musical                                           |
+| `/api/v1/music/`     | `music`                                             | Gravações de notas musicais do Playground                                         |
+| `/api/v1/ai/`        | `ai_gateway`                                        | Assistente didático de dúvidas (Google Gemini API)                                |
 
-`POST /api/v1/auth/register/`
+---
+
+## 1. Autenticação, Perfil, LGPD e Administração (`/api/v1/auth/`)
+
+### 1.1. Cadastro de Usuário
+
+`POST /api/v1/auth/register/` — **Permissão:** Pública (`AllowAny`)
 
 **Request**
 
 ```json
 {
   "nome": "Ana Silva",
-  "email": "ana@example.com",
+  "email": "ana@exemplo.com",
   "password": "SenhaForte!123",
-  "ano_nascimento": 2000,
+  "ano_nascimento": 2002,
   "terms_accepted": true,
   "terms_version": "v1.0"
 }
 ```
 
-| Campo            | Tipo         | Obrigatório | Observação                                               |
-| ---------------- | ------------ | ----------: | -------------------------------------------------------- |
-| `nome`           | string       |         Sim | Campo do modelo de usuário                               |
-| `email`          | string       |         Sim | Normalizado para minúsculas e sem espaços laterais       |
-| `password`       | string       |         Sim | Validado pelas regras de senha do Django e não retornado |
-| `ano_nascimento` | integer/null |         Não | Encaminhado para o usuário                               |
-| `terms_accepted` | boolean      |         Sim | Deve ser `true`                                          |
-| `terms_version`  | string       |         Sim | Máximo de 50 caracteres                                  |
-
-**Response `201 Created`**
+**Response `201 Created**`
 
 ```json
 {
@@ -50,34 +53,43 @@ Base: `/api/v1/auth/`.
 }
 ```
 
-**Response de validação `400 Bad Request`**
+### 1.2. Login Local
 
-```json
-{
-  "email": ["Este e-mail já está registrado."]
-}
-```
-
-A view também pode retornar `{ "error": "..." }` com `400` quando ocorre uma exceção durante a criação. O conteúdo exato depende da exceção capturada.
-
-### Login local
-
-`POST /api/v1/auth/login/`
+`POST /api/v1/auth/login/` — **Permissão:** Pública (`AllowAny`)
 
 **Request**
 
 ```json
 {
-  "email": "ana@example.com",
+  "email": "ana@exemplo.com",
   "password": "SenhaForte!123",
   "terms_accepted": false,
   "terms_version": ""
 }
 ```
 
-`terms_accepted` e `terms_version` são opcionais no serializer e servem ao fluxo de reaceite quando o usuário revogou ou não possui aceite válido.
+**Responses**
 
-**Response `200 OK` — login concluído**
+- `200 OK`: `{ "refresh": "<jwt_refresh>", "access": "<jwt_access>" }` (Quando `is_2fa_enabled = false`)
+- `202 Accepted`: `{ "status": "2fa_required", "message": "Código 2FA enviado para o e-mail." }`
+- `403 Forbidden` (Termos revogados): `{ "status": "terms_required", "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente." }`
+- `403 Forbidden` (Conta suspensa): `{ "error": "Sua conta foi suspensa pelo administrador do sistema." }`
+- `401 Unauthorized`: `{ "error": "Credenciais inválidas." }`
+
+### 1.3. Verificação de Segundo Fator (2FA)
+
+`POST /api/v1/auth/verify-2fa/` — **Permissão:** Pública (`AllowAny`)
+
+**Request**
+
+```json
+{
+  "email": "ana@exemplo.com",
+  "otp": "123456"
+}
+```
+
+**Response `200 OK**`
 
 ```json
 {
@@ -86,43 +98,9 @@ A view também pode retornar `{ "error": "..." }` com `400` quando ocorre uma ex
 }
 ```
 
-**Response `202 Accepted` — 2FA exigido**
+### 1.4. Login / Cadastro com Google OAuth 2.0
 
-```json
-{
-  "status": "2fa_required",
-  "message": "Código 2FA enviado para o e-mail."
-}
-```
-
-**Response `403 Forbidden` — termos exigidos**
-
-```json
-{
-  "status": "terms_required",
-  "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
-}
-```
-
-**Response `401 Unauthorized` — credenciais inválidas**
-
-```json
-{
-  "error": "Credenciais inválidas."
-}
-```
-
-**Response `400 Bad Request` — validação**
-
-```json
-{
-  "email": ["Informe um endereço de e-mail válido."]
-}
-```
-
-### Login/registro com Google
-
-`POST /api/v1/auth/google/`
+`POST /api/v1/auth/google/` — **Permissão:** Pública (`AllowAny`)
 
 **Request**
 
@@ -132,165 +110,27 @@ A view também pode retornar `{ "error": "..." }` com `400` quando ocorre uma ex
   "name": "Ana Silva",
   "terms_accepted": true,
   "terms_version": "v1.0",
-  "ano_nascimento": 2000
+  "ano_nascimento": 2002
 }
 ```
 
-| Campo            | Tipo         | Obrigatório | Observação                                           |
-| ---------------- | ------------ | ----------: | ---------------------------------------------------- |
-| `id_token`       | string       |         Sim | Validado no backend contra o client ID configurado   |
-| `name`           | string       |         Não | Usado no fluxo de cadastro, conforme a view          |
-| `terms_accepted` | boolean      |         Sim | Necessário para o cadastro/reaceite                  |
-| `terms_version`  | string       |         Sim | Máximo de 50 caracteres; permite vazio no serializer |
-| `ano_nascimento` | integer/null |         Não | Usado no cadastro via Google                         |
+**Responses:** `200 OK` (autenticado), `201 Created` (registrado), `202 Accepted` (`2fa_required`) ou `403 Forbidden` (`registration_required` / `terms_required`).
 
-**Response `200 OK` — usuário existente autenticado**
+### 1.5. Recuperação de Senha
 
-```json
-{
-  "refresh": "<jwt_refresh>",
-  "access": "<jwt_access>"
-}
-```
+- **Solicitar Link:** `POST /api/v1/auth/password-reset/`
+- **Request:** `{ "email": "ana@exemplo.com" }`
+- **Response `200 OK`:** `{ "message": "Se o e-mail estiver cadastrado, enviaremos um link de recuperação." }`
 
-**Response `202 Accepted` — 2FA exigido**
+- **Confirmar Nova Senha:** `POST /api/v1/auth/password-reset/confirm/`
+- **Request:** `{ "email": "ana@exemplo.com", "token": "<token>", "new_password": "NovaSenhaForte!123" }`
+- **Response `200 OK`:** `{ "message": "Senha redefinida com sucesso." }`
 
-```json
-{
-  "status": "2fa_required",
-  "message": "Código 2FA enviado para o e-mail."
-}
-```
+### 1.6. Logout
 
-**Response `403 Forbidden` — cadastro ou reaceite necessário**
-
-```json
-{
-  "status": "registration_required",
-  "message": "Usuário não encontrado. Aceite os termos de uso para concluir o cadastro."
-}
-```
-
-ou:
-
-```json
-{
-  "status": "terms_required",
-  "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
-}
-```
-
-**Response `401 Unauthorized` — token inválido/expirado**
-
-```json
-{
-  "error": "Token do Google inválido ou expirado."
-}
-```
-
-**Response `400 Bad Request` — e-mail Google não verificado**
-
-```json
-{
-  "error": "O e-mail da conta Google não foi verificado."
-}
-```
-
-### Verificação do segundo fator
-
-`POST /api/v1/auth/verify-2fa/`
+`POST /api/v1/auth/logout/` — **Permissão:** Autenticado (`IsAuthenticated`)
 
 **Request**
-
-```json
-{
-  "email": "ana@example.com",
-  "otp": "123456"
-}
-```
-
-| Campo   | Tipo   | Obrigatório | Observação                     |
-| ------- | ------ | ----------: | ------------------------------ |
-| `email` | string |         Sim | Usado para localizar o usuário |
-| `otp`   | string |         Sim | Máximo de 6 caracteres         |
-
-**Response `200 OK`**
-
-```json
-{
-  "refresh": "<jwt_refresh>",
-  "access": "<jwt_access>"
-}
-```
-
-**Response `400 Bad Request`**
-
-```json
-{
-  "error": "Código inválido ou expirado."
-}
-```
-
-**Response `404 Not Found`**
-
-```json
-{
-  "error": "Usuário não encontrado."
-}
-```
-
-### Solicitação de redefinição de senha
-
-`POST /api/v1/auth/password-reset/`
-
-**Request**
-
-```json
-{
-  "email": "ana@example.com"
-}
-```
-
-**Response**
-
-O corpo e o status de sucesso dependem da implementação completa de `PasswordResetRequestView`, não incluída integralmente no material analisado. O serializer confirma apenas o campo `email`.
-
-### Confirmação de redefinição de senha
-
-`POST /api/v1/auth/password-reset/confirm/`
-
-**Request**
-
-```json
-{
-  "token": "<password_reset_token>",
-  "new_password": "NovaSenhaForte!123"
-}
-```
-
-| Campo          | Tipo   | Obrigatório | Observação                                               |
-| -------------- | ------ | ----------: | -------------------------------------------------------- |
-| `token`        | string |         Sim | Token de recuperação                                     |
-| `new_password` | string |         Sim | Validado pelas regras de senha do Django e não retornado |
-
-**Response**
-
-O corpo e os status de sucesso/erro dependem da implementação completa de `PasswordResetConfirmView`.
-
-### Logout
-
-`POST /api/v1/auth/logout/`
-
-**Headers**
-
-```http
-Authorization: Bearer <access_token>
-Content-Type: application/json
-```
-
-**Request**
-
-O corpo exato depende da implementação de `LogoutView`. Caso a view utilize blacklist de JWT, é comum que receba o refresh token:
 
 ```json
 {
@@ -298,394 +138,343 @@ O corpo exato depende da implementação de `LogoutView`. Caso a view utilize bl
 }
 ```
 
-Esse exemplo deve ser confirmado contra a view antes de ser usado pelo frontend.
-
-**Response**
-
-O corpo e o status dependem da implementação completa da view.
-
-## Perfil e privacidade
-
-As rotas abaixo foram informadas no `accounts/urls.py`, mas os serializers/views correspondentes não foram fornecidos integralmente no material anexado. Por isso, o contrato do body permanece delimitado apenas pelo método e pela finalidade.
-
-### Consulta de dados pessoais
-
-`GET /api/v1/auth/privacy/data/`
-
-**Request:** sem body.
-
-**Response:** objeto com os dados do titular; campos e status a confirmar na `UserPrivacyDataView`.
-
-### Revogação de consentimento
-
-`POST /api/v1/auth/privacy/revoke-consent/`
-
-**Request:** body a confirmar.
-
-Exemplo possível, caso a implementação opere por finalidade:
+**Response `205 Reset Content**`
 
 ```json
 {
-  "purpose": "terms"
+  "message": "Sessão encerrada com sucesso."
 }
 ```
 
-O campo não deve ser documentado como contrato definitivo sem confirmação na view.
+### 1.7. Perfil e Direitos do Titular (LGPD)
 
-### Exclusão da conta
+Todas as rotas abaixo exigem `IsAuthenticated`:
 
-`DELETE /api/v1/auth/privacy/delete-account/`
+- **Exportar Dados Pessoais:** `GET /api/v1/auth/privacy/data/`
+- **Response `200 OK`:** Retorna `id`, `email`, `ano_nascimento`, `role`, `is_2fa_enabled`, `termos_de_uso` e `metadados`.
 
-**Request:** body a confirmar; recomenda-se confirmação explícita e reautenticação para uma operação destrutiva.
+- **Revogar Consentimento:** `POST /api/v1/auth/privacy/revoke-consent/`
+- **Response `200 OK`:** `{ "message": "Consentimento revogado. Seu acesso à plataforma foi suspenso." }`
 
-**Response:** status e body a confirmar na `DeleteAccountView`.
+- **Excluir e Anonimizar Conta:** `DELETE /api/v1/auth/privacy/delete-account/`
+- **Response `200 OK`:** `{ "message": "Sua conta e dados pessoais foram excluídos e anonimizados com sucesso." }`
 
-### Atualização do perfil
+- **Atualizar Nome de Perfil:** `PUT /api/v1/auth/profile/update/`
+- **Request:** `{ "nome": "Ana Maria Silva" }`
+- **Response `200 OK`:** `{ "message": "Perfil atualizado com sucesso.", "tokens": { "refresh": "...", "access": "..." } }`
 
-`PUT /api/v1/auth/profile/update/`
+- **Alterar Senha:** `PUT /api/v1/auth/password/change/`
+- **Request:** `{ "old_password": "SenhaAtual!123", "new_password": "NovaSenhaForte!123" }`
+- **Response `200 OK`:** `{ "message": "Senha atualizada com sucesso." }`
 
-**Request:** campos de perfil a confirmar na view/serializer.
+### 1.8. Administração do Sistema (`admin-sistema`)
 
-Possível estrutura baseada nos campos conhecidos do usuário:
+Exigem usuário autenticado com papel `admin-sistema`:
+
+- **Métricas, Gráficos e Auditoria (Dashboard):** `GET /api/v1/auth/admin/metrics/`
+- **Response `200 OK`:**
 
 ```json
 {
-  "nome": "Ana Silva",
-  "ano_nascimento": 2000
+  "totais": {
+    "usuarios": 1005,
+    "ativos": 965,
+    "suspensos": 40,
+    "usuarios_2fa": 5,
+    "anonimizados_lgpd": 0,
+    "licoes": 12,
+    "tentativas_exercicios": 48,
+    "precisao_global": 81.3,
+    "eventos_auditoria_7d": 34,
+    "falhas_autenticacao_7d": 2
+  },
+  "distribuicao_papeis": {
+    "estudantes": 1002,
+    "admins_conteudo": 1,
+    "admins_sistema": 2
+  },
+  "acervo": {
+    "unidades": 4,
+    "aulas": 8,
+    "exercicios": 32,
+    "glossario": 31,
+    "gravacoes_playground": 3
+  },
+  "grafico": [
+    {
+      "dia": "Seg (12/10)",
+      "ativos": 140,
+      "novos_registros": 142,
+      "licoes": 4,
+      "exercicios": 16
+    }
+  ],
+  "desempenho_topicos": [
+    {
+      "topico": "Leitura de Partituras",
+      "total": 24,
+      "precisao": 87.5
+    }
+  ],
+  "ultimos_logs": [
+    {
+      "id": "<uuid>",
+      "action": "LESSON_COMPLETED",
+      "usuario": "ana@exemplo.com",
+      "ip_address": "127.0.0.1",
+      "timestamp": "18/10/2026 08:10"
+    }
+  ]
 }
 ```
 
-Este exemplo é ilustrativo e não substitui a definição efetiva da view.
+- **Listar Usuários:** `GET /api/v1/auth/admin/users/`
+- **Response `200 OK`:** Lista de usuários contendo `id`, `nome`, `email`, `role` e `ativo`.
 
-### Alteração de senha
+- **Alterar Papel ou Status (Suspender/Reativar):** `PATCH /api/v1/auth/admin/users/<user_id>/`
+- **Request:** `{ "role": "conteudo", "ativo": false }`
+- **Response `200 OK`:** `{ "message": "Usuário atualizado com sucesso.", "id": "<uuid>", "ativo": false, "role": "admin-conteudo" }`
 
-`PUT /api/v1/auth/password/change/`
+---
 
-**Request:** campos a confirmar na view. Uma estrutura recomendada seria:
+## 2. Triagem de Nivelamento (`/api/v1/placement/`)
 
-```json
-{
-  "old_password": "SenhaAtual!123",
-  "new_password": "NovaSenhaForte!123"
-}
-```
+### 2.1. Listar Questões Ativas para o Visitante/Aluno
 
-Os nomes devem ser ajustados ao contrato real antes da publicação.
+`GET /api/v1/placement/questions/` — **Permissão:** Pública (`AllowAny`)
 
-## Administração
+### 2.2. Submeter Respostas da Triagem
 
-### Métricas
-
-`GET /api/v1/auth/admin/metrics/`
-
-**Request:** sem body.
-
-**Response:** métricas administrativas; campos e status a confirmar em `AdminSystemMetricsView`.
-
-### Lista de usuários
-
-`GET /api/v1/auth/admin/users/`
-
-**Request:** sem body. Parâmetros de consulta, paginação e filtros a confirmar.
-
-**Response:** lista ou objeto paginado de usuários; campos a confirmar.
-
-### Usuário específico
-
-`GET /api/v1/auth/admin/users/<user_id>/`
-
-**Request:** sem body; `user_id` é parâmetro de rota.
-
-**Response:** representação do usuário; campos a confirmar.
-
-### Atualização administrativa
-
-`PATCH /api/v1/auth/admin/users/` ou `PATCH /api/v1/auth/admin/users/<user_id>/`
-
-A rota e os métodos precisam ser conferidos no arquivo de URLs e na view. O body não foi fornecido nos serializers anexados; não documentar campos sem confirmar a implementação.
-
-## Placement
-
-Base: `/api/v1/placement/`.
-
-### Perguntas de triagem
-
-`GET /api/v1/placement/questions/`
-
-**Request:** sem body.
-
-**Response `200 OK`**
-
-```json
-[
-  {
-    "id": "a8098c1a-f86e-11da-bd1a-00112444be1e",
-    "enunciado": "Qual é o seu nível de conhecimento musical?",
-    "tipo": "multipla_escolha",
-    "dados_partitura": null,
-    "ordem": 1,
-    "ativo": true,
-    "opcoes": [
-      {
-        "id": "b8098c1a-f86e-11da-bd1a-00112444be1e",
-        "texto": "Iniciante",
-        "peso_perfil": 1
-      }
-    ]
-  }
-]
-```
-
-O formato acima é derivado de `PerguntaTriagemSerializer` e `OpcaoTriagemSerializer`.
-
-### Envio das respostas
-
-`POST /api/v1/placement/submit/`
+`POST /api/v1/placement/submit/` — **Permissão:** Pública / Autenticado
 
 **Request**
 
 ```json
 {
   "respostas": {
-    "a8098c1a-f86e-11da-bd1a-00112444be1e": "b8098c1a-f86e-11da-bd1a-00112444be1e"
+    "<pergunta_uuid>": "<opcao_uuid>"
   }
 }
 ```
 
-`respostas` é um objeto/dicionário em que a chave é o ID da pergunta e o valor é o ID da opção escolhida.
-
-**Response `201 Created`**
+**Response `201 Created**`
 
 ```json
 {
   "nivel": "Iniciante",
   "sessionKey": "sess_4f8c2a1b7d90",
   "estatisticas": {
-    "acertos": 1,
-    "total_questoes": 5,
-    "pontos": 1,
-    "pontos_maximos": 3
+    "acertos": 2,
+    "total_questoes": 8,
+    "pontos": 10,
+    "pontos_maximos": 19
   },
   "modulo_recomendado": {
     "titulo": "Unidade 1: Leitura de Partituras",
-    "descricao": "Pauta, clave de Sol, notas e figuras de duração."
+    "descricao": "Domine a pauta musical, a Clave de Sol, as notas nas linhas/espaços e a divisão rítmica."
   }
 }
 ```
 
-**Response `400 Bad Request`**
+### 2.3. CRUD Administrativo de Questões de Triagem
+
+Base: `/api/v1/placement/admin/questoes/` — **Permissão:** `admin-conteudo` / `admin-sistema`
+Suporta `GET`, `POST`, `PUT`, `PATCH` e `DELETE`.
+
+---
+
+## 3. Trilha Didática, Exercícios, Progresso e Gamificação (`/api/v1/learning/`)
+
+### 3.1. Unidades Didáticas (Módulos)
+
+Base: `/api/v1/learning/modulos/`
+
+- `GET`: Público — retorna todas as unidades ordenadas por `ordem`, incluindo a lista de `aulas` (`lessons`) e seus respectivos `exercicios` (`exercises`).
+- `POST`, `PUT`, `PATCH`, `DELETE`: Restrito a `admin-conteudo` e `admin-sistema`.
+
+**Payload de Criação/Edição (`POST` / `PUT`)**
 
 ```json
 {
-  "erro": "Nenhuma resposta fornecida"
-}
-```
-
-### CRUD administrativo de perguntas
-
-`PerguntaTriagemViewSet` é um `ModelViewSet`, mas a rota do router não foi fornecida no material analisado. Quando registrado, o DRF normalmente oferece operações de coleção e detalhe:
-
-| Operação             | Método   | Body                                     |
-| -------------------- | -------- | ---------------------------------------- |
-| Listagem             | `GET`    | Sem body                                 |
-| Criação              | `POST`   | Objeto de pergunta com `opcoes` opcional |
-| Detalhe              | `GET`    | Sem body                                 |
-| Atualização completa | `PUT`    | Objeto completo                          |
-| Atualização parcial  | `PATCH`  | Campos parciais                          |
-| Exclusão             | `DELETE` | Sem body                                 |
-
-**Body de criação/atualização**
-
-```json
-{
-  "enunciado": "Qual é a função da clave de Sol?",
-  "tipo": "multipla_escolha",
-  "dados_partitura": null,
+  "titulo": "Unidade 1: Leitura de Partituras",
+  "descricao": "Domine a pauta musical, a Clave de Sol, as notas nas linhas/espaços e a divisão rítmica.",
+  "categoria": "Iniciante",
   "ordem": 1,
+  "ativo": true
+}
+```
+
+### 3.2. Lições (Aulas)
+
+Base: `/api/v1/learning/aulas/`
+
+- `GET`: Público — expõe os campos nativos e os aliases `title`, `subtitle` (resumo curto para o card da trilha), `theory` (texto completo do guia teórico) e `exercises`.
+- `POST`, `PUT`, `PATCH`, `DELETE`: Restrito a `admin-conteudo` e `admin-sistema`.
+
+**Payload de Criação/Edição (`POST` / `PUT`)**
+
+```json
+{
+  "modulo": "00000000-0000-0000-0001-000000000001",
+  "titulo": "A Pauta e as Notas na Clave de Sol",
+  "conteudo_teorico": "Explicação didática exibida na etapa teórica da lição...",
+  "partitura_dados": {
+    "resumo": "Pauta, referência da Clave de Sol, Dó Central e notas nas linhas e espaços.",
+    "clef": "treble",
+    "notes": ["C4", "D4", "E4", "F4", "G4", "A4", "B4"],
+    "caption": "Escala de Dó4 a Si4 na Clave de Sol."
+  },
+  "ordem": 1,
+  "ativa": true
+}
+```
+
+### 3.3. Exercícios Interativos
+
+Base: `/api/v1/learning/exercicios/` (Aceita filtro opcional `?aula=<aula_uuid>`)
+
+- `GET`: Público.
+- `POST`, `PUT`, `PATCH`, `DELETE`: Restrito a `admin-conteudo` e `admin-sistema`.
+
+**Payload de Criação (`POST`)**
+
+```json
+{
+  "aula": "00000000-0000-0000-0002-000000000101",
+  "tipo": "note-reading",
+  "enunciado": "Qual nota está escrita na linha suplementar abaixo da pauta?",
+  "tag_topico": "Leitura de Partituras",
   "ativo": true,
-  "opcoes": [
-    {
-      "texto": "Indicar a posição das notas na pauta",
-      "peso_perfil": 2
-    },
-    {
-      "texto": "Indicar o andamento da música",
-      "peso_perfil": 0
-    }
-  ]
-}
-```
-
-Na atualização, quando `opcoes` é enviado, o serializer remove as opções antigas e cria as novas dentro de transação.
-
-## Glossário
-
-Base: `/api/v1/glossary/`.
-
-`GlossarioViewSet` é um `ModelViewSet` com `IsAuthenticated` e `pagination_class = None`. Os routers registrados são `/api/v1/glossary/termos/` e `/api/v1/glossary/`.
-
-### Campos serializados
-
-| Campo        | Tipo                               | Leitura/escrita | Observação             |
-| ------------ | ---------------------------------- | --------------- | ---------------------- |
-| `id`         | integer ou tipo definido no modelo | Leitura         | Identificador          |
-| `termo`      | string                             | Conforme modelo | Campo nativo           |
-| `definicao`  | string                             | Conforme modelo | Campo nativo           |
-| `figura_svg` | string/null                        | Opcional        | Pode ser vazio ou nulo |
-| `categoria`  | string                             | Conforme modelo | Campo nativo           |
-| `term`       | string                             | Somente leitura | Alias de `termo`       |
-| `definition` | string                             | Somente leitura | Alias de `definicao`   |
-| `diagram`    | string/null                        | Somente leitura | Alias de `figura_svg`  |
-| `category`   | string                             | Somente leitura | Alias de `categoria`   |
-
-### Listagem
-
-`GET /api/v1/glossary/` ou `GET /api/v1/glossary/termos/`
-
-**Request:** sem body.
-
-**Response `200 OK`**
-
-```json
-[
-  {
-    "id": 1,
-    "termo": "Escala maior",
-    "definicao": "Sequência de notas organizada por tons e semitons.",
-    "figura_svg": null,
-    "categoria": "Escalas",
-    "term": "Escala maior",
-    "definition": "Sequência de notas organizada por tons e semitons.",
-    "diagram": null,
-    "category": "Escalas"
+  "gabarito_dados": {
+    "ordem": 1,
+    "stave": ["C4"],
+    "options": ["Dó", "Ré", "Mi", "Fá"],
+    "answer": "Dó",
+    "explanation": "O Dó Central (C4) fica na primeira linha suplementar inferior da Clave de Sol."
   }
-]
-```
-
-### Detalhe, criação, atualização e exclusão
-
-Como o viewset herda `ModelViewSet`, o DRF normalmente expõe ações de detalhe no router:
-
-| Operação             | Método   | URL típica  | Body                           |
-| -------------------- | -------- | ----------- | ------------------------------ |
-| Detalhe              | `GET`    | `.../<pk>/` | Sem body                       |
-| Criação              | `POST`   | `.../`      | Campos graváveis do serializer |
-| Atualização completa | `PUT`    | `.../<pk>/` | Campos graváveis               |
-| Atualização parcial  | `PATCH`  | `.../<pk>/` | Campos parciais                |
-| Exclusão             | `DELETE` | `.../<pk>/` | Sem body                       |
-
-**Body de criação/atualização**
-
-```json
-{
-  "termo": "Escala maior",
-  "definicao": "Sequência de notas organizada por tons e semitons.",
-  "figura_svg": "<svg>...</svg>",
-  "categoria": "Escalas"
 }
 ```
 
-Os aliases em inglês são `read_only`; não devem ser enviados como campos de escrita.
+### 3.4. Registrar Tentativa de Exercício
 
-## Música
+`POST /api/v1/learning/tentativas/` — **Permissão:** `IsAuthenticated`
 
-Base: `/api/v1/music/`.
-
-`MusicaViewSet` é um `ModelViewSet`. O router registra `/api/v1/music/musicas/`. O código anexado define `AllowAny` e, no `perform_create`, associa o usuário autenticado quando houver login ou salva `id_usuario = None` para visitante.
-
-### Campos serializados
-
-| Campo          | Tipo                    | Leitura/escrita                | Observação                          |
-| -------------- | ----------------------- | ------------------------------ | ----------------------------------- |
-| `id_musica`    | Tipo definido no modelo | Somente leitura                | Identificador                       |
-| `nome_musica`  | Tipo definido no modelo | Conforme modelo                | Nome da música                      |
-| `notas`        | lista                   | Conforme modelo                | Máximo de 128 itens; deve ser lista |
-| `id_usuario`   | Tipo definido no modelo | Deve ser tratado pelo servidor | Sobrescrito em `perform_create`     |
-| `data_criacao` | data/hora               | Somente leitura                | Gerado pelo modelo                  |
-
-### Listagem
-
-`GET /api/v1/music/musicas/`
-
-**Request:** sem body.
-
-**Response `200 OK`**
+**Request**
 
 ```json
-[
-  {
-    "id_musica": 1,
-    "nome_musica": "Minha melodia",
-    "notas": ["C4", "E4", "G4"],
-    "id_usuario": 7,
-    "data_criacao": "2026-09-26T14:30:00Z"
+{
+  "exercicio": "00000000-0000-0000-0003-000000001011",
+  "resposta": "Dó",
+  "tempo_resposta_ms": 1420
+}
+```
+
+**Response `201 Created**`
+
+```json
+{
+  "tentativa": {
+    "id": "<uuid>",
+    "usuario": "<uuid>",
+    "exercicio": "00000000-0000-0000-0003-000000001011",
+    "acertou": true,
+    "tempo_resposta_ms": 1420,
+    "realizada_em": "2026-10-18T11:00:00Z"
+  },
+  "acertou": true,
+  "answer": "Dó",
+  "explanation": "O Dó Central (C4) fica na primeira linha suplementar inferior da Clave de Sol.",
+  "errorsByTopic": {
+    "Leitura de Partituras": { "erros": 0, "total": 1 }
   }
-]
-```
-
-O tipo exato de `id_musica`, `id_usuario` e o formato dos itens de `notas` dependem do modelo e do frontend.
-
-### Criação
-
-`POST /api/v1/music/musicas/`
-
-**Request autenticado**
-
-```json
-{
-  "nome_musica": "Minha melodia",
-  "notas": ["C4", "E4", "G4"]
 }
 ```
 
-Em razão de `perform_create`, o cliente não deve definir `id_usuario`; o servidor deve usar o usuário autenticado.
+### 3.5. Concluir Lição (Transação Atômica: Progresso + Streak + Badges)
 
-**Request anônimo conforme o código atual**
+`POST /api/v1/learning/aulas/<aula_uuid>/concluir/` — **Permissão:** `IsAuthenticated`
 
-```json
-{
-  "nome_musica": "Rascunho público",
-  "notas": ["C4", "D4"]
-}
-```
-
-Nesse caso, a view salva `id_usuario` como `None`.
-
-**Response `201 Created`**
+**Request**
 
 ```json
 {
-  "id_musica": 1,
-  "nome_musica": "Minha melodia",
-  "notas": ["C4", "E4", "G4"],
-  "id_usuario": 7,
-  "data_criacao": "2026-09-26T14:30:00Z"
+  "acertos": 4,
+  "total": 4
 }
 ```
 
-**Response `400 Bad Request` — mais de 128 notas ou tipo inválido**
+**Response `200 OK**`
 
 ```json
 {
-  "notas": ["Uma música não pode ter mais do que 128 notas."]
+  "aula_id": "00000000-0000-0000-0002-000000000101",
+  "concluida": true,
+  "taxa_acerto": 100.0,
+  "streak": 1,
+  "melhor_streak": 1,
+  "pontuacao_total": 10,
+  "completedLessons": ["00000000-0000-0000-0002-000000000101"],
+  "badges": ["primeira-nota"]
 }
 ```
 
-ou:
+### 3.6. Estado Consolidado de Progresso do Estudante
+
+`GET /api/v1/learning/progresso/` — **Permissão:** `IsAuthenticated`
+
+**Response `200 OK**`
 
 ```json
 {
-  "notas": ["O campo notas deve ser uma lista."]
+  "nome": "Ana Silva",
+  "role": "estudante",
+  "streak": 1,
+  "melhor_streak": 1,
+  "pontuacao_total": 10,
+  "completedLessons": ["00000000-0000-0000-0002-000000000101"],
+  "badges": ["primeira-nota"],
+  "errorsByTopic": {
+    "Leitura de Partituras": { "erros": 0, "total": 4 }
+  },
+  "placement": "Iniciante"
 }
 ```
 
-### Detalhe, atualização e exclusão
+### 3.7. Disparar Lembretes de Ofensiva (_Streak_) via E-mail
 
-Como o viewset herda `ModelViewSet`, o router expõe:
+`POST /api/v1/learning/streak-reminders/` — **Permissão:** `admin-conteudo` / `admin-sistema`
 
-| Operação             | Método   | URL típica                    | Body             |
-| -------------------- | -------- | ----------------------------- | ---------------- |
-| Detalhe              | `GET`    | `/api/v1/music/musicas/<pk>/` | Sem body         |
-| Atualização completa | `PUT`    | `/api/v1/music/musicas/<pk>/` | Campos graváveis |
-| Atualização parcial  | `PATCH`  | `/api/v1/music/musicas/<pk>/` | Campos parciais  |
-| Exclusão             | `DELETE` | `/api/v1/music/musicas/<pk>/` | Sem body         |
+**Response `200 OK**`
+
+```json
+{
+  "data_verificacao": "2026-10-18",
+  "elegiveis": 1,
+  "enviados": 1,
+  "falhas": 0
+}
+```
+
+---
+
+## 4. Glossário Musical (`/api/v1/glossary/`)
+
+Base: `/api/v1/glossary/termos/` (ou `/api/v1/glossary/`)
+
+- `GET`: Lista todos os termos musicais com os campos nativos (`id`, `termo`, `definicao`, `figura_svg`, `categoria`) e aliases (`term`, `definition`, `diagram`, `category`).
+- `POST`, `PUT`, `PATCH`, `DELETE`: CRUD de termos do glossário.
+
+---
+
+## 5. Prática Livre / Playground (`/api/v1/music/`)
+
+Base: `/api/v1/music/musicas/`
+
+- `GET`: Lista as sequências de notas gravadas.
+- `POST`: Salva uma sequência de até 128 notas tocadas no piano virtual (`{ "nome_musica": "Minha melodia", "notas": ["C4", "E4", "G4"] }`).
+
+---
+
+## 6. Assistente Didático de IA (`/api/v1/ai/`)
+
+- `POST /api/v1/ai/ask/` (conforme definido em `ai_gateway/urls.py`): Recebe a dúvida textual do estudante e retorna a explicação mediada pela Google Gemini API sob prompt de sistema restrito à teoria musical.

@@ -80,7 +80,7 @@ class LoginView(APIView):
             
             if user and user.check_password(password):
                 
-                # 1. Validação de LGPD / Reativação de Conta
+                # 1. Validação de LGPD / Reativação de Conta por revogação de termos
                 if not user.terms_accepted:
                     if terms_accepted:
                         user.terms_accepted = True
@@ -95,6 +95,13 @@ class LoginView(APIView):
                             "status": "terms_required", 
                             "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
                         }, status=status.HTTP_403_FORBIDDEN)
+
+                # 1.1 Trava de Segurança: Conta suspensa pelo Administrador de Sistema
+                if not user.is_active:
+                    AuditService.log_event(request, user, "BLOCKED_SUSPENDED_USER_LOGIN")
+                    return Response({
+                        "error": "Sua conta foi suspensa pelo administrador do sistema."
+                    }, status=status.HTTP_403_FORBIDDEN)
 
                 # 2. Validação de Segurança (2FA)
                 if user.is_2fa_enabled:
@@ -455,34 +462,36 @@ class AdminSystemUsersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def check_admin(self, request):
-        if request.user.role not in ['admin-sistema', 'sistema']:
+        if request.user.role not in ['admin-sistema', 'sistema'] and not request.user.is_superuser:
             self.permission_denied(request, "Acesso restrito a administradores.")
 
     def get(self, request, user_id=None):
         self.check_admin(request)
         
         # FILTRO LGPD: Remove os usuários com a máscara de exclusão da tabela
-        users = User.objects.exclude(email__endswith="@anon.com").order_by('-id')
+        users = User.objects.exclude(email__endswith="@anon.com").order_by('-created_at')
         
         reverse_role_map = {
             "admin-sistema": "sistema",
             "admin-conteudo": "conteudo",
-            "estudante": "estudante"
+            "usuario": "estudante",
+            "estudante": "estudante",
         }
 
         data = [{
-            "id": u.id,
+            "id": str(u.id),
             "nome": u.nome,
             "email": u.email,
-            "role": reverse_role_map.get(u.role, u.role),
-            "ativo": u.is_active
+            "role": reverse_role_map.get(u.role, "estudante"),
+            "ativo": bool(u.is_active),
         } for u in users]
         return Response(data, status=status.HTTP_200_OK)
 
     def patch(self, request, user_id=None):
         self.check_admin(request)
+        target_id = user_id or request.data.get("id")
         try:
-            target_user = User.objects.get(id=user_id)
+            target_user = User.objects.get(id=target_id)
         except User.DoesNotExist:
             return Response({"error": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -490,22 +499,52 @@ class AdminSystemUsersView(APIView):
             return Response({"error": "Você não pode desativar sua própria conta."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            campos_atualizados = ['updated_at']
+
             if 'role' in request.data:
                 new_role = request.data['role']
-                
                 role_map = {
                     "sistema": "admin-sistema",
+                    "admin-sistema": "admin-sistema",
                     "conteudo": "admin-conteudo",
-                    "estudante": "estudante"
+                    "admin-conteudo": "admin-conteudo",
+                    "estudante": "estudante",
+                    "usuario": "estudante",
                 }
                 target_user.role = role_map.get(new_role, new_role)
-                AuditService.log_event(request, target_user, "ADMIN_CHANGED_USER_ROLE")
+                campos_atualizados.append('role')
                 
             if 'ativo' in request.data:
-                target_user.is_active = request.data['ativo']
-                AuditService.log_event(request, target_user, "ADMIN_TOGGLED_USER_STATUS")
+                raw_ativo = request.data['ativo']
+                if isinstance(raw_ativo, str):
+                    novo_ativo = raw_ativo.strip().lower() == 'true'
+                else:
+                    novo_ativo = bool(raw_ativo)
+                target_user.is_active = novo_ativo
+                campos_atualizados.append('is_active')
 
-            target_user.save()
-            return Response({"message": "Usuário atualizado com sucesso."}, status=status.HTTP_200_OK)
+            target_user.save(update_fields=campos_atualizados)
+
+            if 'role' in request.data:
+                AuditService.log_event(
+                    request,
+                    target_user,
+                    "ADMIN_CHANGED_USER_ROLE",
+                    {"admin_id": str(request.user.id), "new_role": target_user.role},
+                )
+            if 'ativo' in request.data:
+                AuditService.log_event(
+                    request,
+                    target_user,
+                    "ADMIN_TOGGLED_USER_STATUS",
+                    {"admin_id": str(request.user.id), "is_active": target_user.is_active},
+                )
+
+            return Response({
+                "message": "Usuário atualizado com sucesso.",
+                "id": str(target_user.id),
+                "ativo": target_user.is_active,
+                "role": target_user.role,
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Erro interno ao atualizar: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
