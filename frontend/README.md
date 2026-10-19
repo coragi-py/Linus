@@ -12,6 +12,7 @@ frontend/
 │   │   ├── ui/                 # Componentes base de interface (shadcn/ui + Radix UI)
 │   │   ├── AiAssistant.tsx     # Gaveta do assistente didático integrado à Gemini API
 │   │   ├── AppShell.tsx        # Layout global, cabeçalho dinâmico e guardas de rota (RBAC)
+│   │   ├── Avatar.tsx          # Renderizador e seletor de avatares customizáveis (DiceBear)
 │   │   ├── AuthModal.tsx       # Modal de convite para autenticação/cadastro
 │   │   ├── GlossaryDiagram.tsx # Renderizador VexFlow para símbolos do glossário
 │   │   ├── Logo.tsx            # Identidade visual do Linus

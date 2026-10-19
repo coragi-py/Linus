@@ -81,7 +81,8 @@ O comando `python manage.py migrate` executa automaticamente as seguintes cargas
 - `learning/migrations/0002_seed_curriculum.py`: 4 unidades didáticas, 8 lições completas (com guia teórico e partitura demonstrativa), 32 exercícios interativos e 3 medalhas iniciais.
 - `placement/migrations/0002_seed_triagem.py`: 8 questões progressivas de nivelamento pedagógico (texto e partitura VexFlow) com alternativas e pesos.
 - `glossary/migrations/0002_seed_glossario.py`: 31 termos fundamentais de teoria musical com definições aprofundadas e identificadores VexFlow.
-- `accounts/migrations/0004_seed_1000_users.py`: 1.000 contas de estudantes distribuídas nos últimos 7 dias para validação de métricas e testes de carga.
+- `music/migrations/0002_seed_public_musics.py`: 3 melodias populares públicas (`id_usuario=None`) como amostras demonstrativas no Playground.
+- `accounts/migrations/0004_seed_1000_users.py`: 1.000 contas de estudantes com senhas e *salts* PBKDF2-SHA256 individualizados, distribuídas nos últimos 7 dias para validação de métricas e testes de carga.
 
 ### Disparo de lembretes de ofensiva (_Streak_) via CLI
 
