@@ -1,8 +1,20 @@
 // Adicionado a historico e plotado as notas para visualização por Antonio 10/09
-// Adicionado a visualização das notas das musicas gravas na partitura para visualização, por 12/09
+// Adicionado a visualização das notas das musicas gravadas na partitura para visualização, por Antonio 12/09
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Eraser, Keyboard, Music2, Play, Save, X, ListMusic, Trash2 } from "lucide-react";
+import {
+  Eraser,
+  Keyboard,
+  Music2,
+  Play,
+  Save,
+  X,
+  ListMusic,
+  Trash2,
+  Sparkles,
+  Lock,
+} from "lucide-react";
+import { toast } from "sonner";
 import { SectionTitle } from "@/components/AppShell";
 import Stave from "@/components/Stave";
 import { VirtualPiano } from "@/components/VirtualPiano";
@@ -32,7 +44,22 @@ interface MusicaSalva {
   id_musica: string;
   nome_musica: string;
   notas: string[];
+  id_usuario?: string | null;
+  is_publica?: boolean;
   data_criacao: string;
+}
+
+const API_MUSIC_URL = "http://localhost:8000/api/v1/music/musicas/";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("access_token");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 function Pratica() {
@@ -46,16 +73,18 @@ function Pratica() {
   const [savedMusics, setSavedMusics] = useState<MusicaSalva[]>([]);
   const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
 
-  // Referência para controlar e interromper o sintetizador de áudio anterior
   const activeSynthRef = useRef<Tone.PolySynth | null>(null);
   const activeTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   const fetchSavedMusics = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/music/musicas/");
+      const response = await fetch(API_MUSIC_URL, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
-        setSavedMusics(data);
+        setSavedMusics(Array.isArray(data) ? data : data.results || []);
       }
     } catch (error) {
       console.error("Erro ao buscar músicas salvas:", error);
@@ -63,9 +92,8 @@ function Pratica() {
   };
 
   useEffect(() => {
-    fetchSavedMusics();
+    void fetchSavedMusics();
     return () => {
-      // Limpeza ao desmontar o componente
       if (activeSynthRef.current) {
         activeSynthRef.current.dispose();
       }
@@ -89,17 +117,15 @@ function Pratica() {
 
   const handleConfirmSave = async () => {
     if (!musicTitle.trim()) {
-      alert("Por favor, digite um nome para a música.");
+      toast.warning("Por favor, digite um nome para a música.");
       return;
     }
 
     setIsSaving(true);
     try {
-      const response = await fetch("http://localhost:8000/api/v1/music/musicas/", {
+      const response = await fetch(API_MUSIC_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           nome_musica: musicTitle.trim(),
           notas: history,
@@ -110,25 +136,26 @@ function Pratica() {
         throw new Error("Erro ao salvar no backend.");
       }
 
-      alert("Gravação salva com sucesso!");
+      toast.success("Gravação salva na sua biblioteca privada!");
       setHistory([]);
       setIsModalOpen(false);
-      fetchSavedMusics();
+      void fetchSavedMusics();
     } catch (error) {
       console.error("Erro na requisição:", error);
-      alert("Não foi possível salvar a gravação.");
+      toast.error("Não foi possível salvar a gravação.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteMusic = async (id_musica: string, nome: string) => {
-    const confirmar = window.confirm(`Deseja realmente excluir a música "${nome}"?`);
+    const confirmar = window.confirm(`Deseja realmente excluir a sua gravação "${nome}"?`);
     if (!confirmar) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/music/musicas/${id_musica}/`, {
+      const response = await fetch(`${API_MUSIC_URL}${id_musica}/`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -136,22 +163,19 @@ function Pratica() {
       }
 
       setSavedMusics((prev) => prev.filter((m) => m.id_musica !== id_musica));
-      alert("Música excluída com sucesso!");
+      toast.success("Gravação excluída com sucesso!");
     } catch (error) {
       console.error("Erro na exclusão:", error);
-      alert("Não foi possível excluir a música.");
+      toast.error("Não foi possível excluir a gravação.");
     }
   };
 
-  // Função para reproduzir, plotar as notas na partitura e garantir exclusividade
   const playSavedMusic = async (musica: MusicaSalva) => {
     if (!musica.notas || musica.notas.length === 0) return;
 
-    // Atualiza o histórico para plotar as notas da música selecionada na partitura
     setHistory(musica.notas);
     setCurrent([]);
 
-    // 1. Interrompe e limpa qualquer áudio/timeout anterior em execução
     if (activeSynthRef.current) {
       activeSynthRef.current.dispose();
       activeSynthRef.current = null;
@@ -186,7 +210,7 @@ function Pratica() {
       <SectionTitle
         eyebrow="Playground"
         title="Piano virtual e partitura em tempo real"
-        description="Nesta área, você pode criar melodias com base no seu conhecimento e explorar sua criatividade musical."
+        description="Ouça as amostras públicas para se inspirar ou crie e salve suas próprias melodias privadas."
       />
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -274,10 +298,10 @@ function Pratica() {
               <button
                 onClick={handleOpenSaveModal}
                 disabled={history.length === 0 || isSaving}
-                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50 cursor-pointer"
+                className="flex cursor-pointer items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
               >
                 <Save className="size-4" aria-hidden />
-                Salvar Gravação
+                Salvar Minha Gravação
               </button>
             </div>
 
@@ -298,59 +322,82 @@ function Pratica() {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="neu h-full p-5 sm:p-6 flex flex-col">
+          <div className="neu flex h-full flex-col p-5 sm:p-6">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <ListMusic className="size-5 text-primary" />
-              <h2 className="font-display text-lg">Músicas Salvas</h2>
+              <h2 className="font-display text-lg">Biblioteca do Playground</h2>
             </div>
 
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[500px] space-y-3 pr-1">
+            <div className="mt-4 max-h-[500px] flex-1 space-y-3 overflow-y-auto pr-1">
               {savedMusics.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  Nenhuma música salva no banco ainda. Grave e salve sua primeira partitura!
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma música disponível no momento.
                 </p>
               ) : (
-                savedMusics.map((musica) => (
-                  <div
-                    key={musica.id_musica}
-                    className="neu-inset rounded-xl p-3.5 flex items-center justify-between gap-3 bg-background/50 transition-all hover:border-primary/50"
-                  >
-                    <div className="overflow-hidden">
-                      <h4
-                        className="text-sm font-bold text-foreground truncate"
-                        title={musica.nome_musica}
-                      >
-                        {musica.nome_musica}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {musica.notas?.length || 0} notas ·{" "}
-                        {new Date(musica.data_criacao).toLocaleDateString()}
-                      </p>
-                    </div>
+                savedMusics.map((musica) => {
+                  const isPublicSample =
+                    musica.is_publica === true || musica.id_usuario == null;
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => playSavedMusic(musica)}
-                        title="Ouvir música"
-                        className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground shadow-sm hover:opacity-90"
-                      >
-                        <Play
-                          className={`size-3.5 ${isPlayingId === musica.id_musica ? "animate-pulse" : ""}`}
-                        />
-                      </button>
+                  return (
+                    <div
+                      key={musica.id_musica}
+                      className="neu-inset flex items-center justify-between gap-3 rounded-xl bg-background/50 p-3.5 transition-all hover:border-primary/50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          {isPublicSample ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                              <Sparkles className="size-2.5" /> Amostra Pública
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                              <Lock className="size-2.5" /> Minha Gravação
+                            </span>
+                          )}
+                        </div>
+                        <h4
+                          className="truncate text-sm font-bold text-foreground"
+                          title={musica.nome_musica}
+                        >
+                          {musica.nome_musica}
+                        </h4>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {musica.notas?.length || 0} notas
+                          {!isPublicSample &&
+                            ` · ${new Date(musica.data_criacao).toLocaleDateString()}`}
+                        </p>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMusic(musica.id_musica, musica.nome_musica)}
-                        title="Excluir música"
-                        className="flex items-center justify-center size-8 rounded-lg bg-destructive/10 text-destructive shadow-sm hover:bg-destructive/20"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void playSavedMusic(musica)}
+                          title="Ouvir e ver na partitura"
+                          className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm hover:opacity-90"
+                        >
+                          <Play
+                            className={`size-3.5 ${
+                              isPlayingId === musica.id_musica ? "animate-pulse" : ""
+                            }`}
+                          />
+                        </button>
+
+                        {!isPublicSample && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleDeleteMusic(musica.id_musica, musica.nome_musica)
+                            }
+                            title="Excluir minha gravação"
+                            className="flex size-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive shadow-sm hover:bg-destructive/20"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -361,7 +408,7 @@ function Pratica() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="neu w-full max-w-md rounded-2xl bg-card p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground">Salvar Música</h3>
+              <h3 className="text-lg font-bold text-foreground">Salvar Minha Gravação</h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -372,7 +419,7 @@ function Pratica() {
             </div>
 
             <p className="mt-2 text-sm text-muted-foreground">
-              Deseja salvar esta gravação? Digite um nome para identificar a sua música:
+              Esta gravação ficará visível apenas na sua conta. Digite um título para identificá-la:
             </p>
 
             <input
@@ -393,7 +440,7 @@ function Pratica() {
               </button>
               <button
                 type="button"
-                onClick={handleConfirmSave}
+                onClick={() => void handleConfirmSave()}
                 disabled={isSaving}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
               >
