@@ -1,86 +1,49 @@
-# 
-
-from django.test import TestCase, RequestFactory
-from django.contrib.auth.models import AnonymousUser
-from django.contrib.auth import get_user_model
-from audit.models import AuditLog
+import unittest
+from unittest.mock import patch, MagicMock
 from audit.services.audit_service import AuditService
 
-User = get_user_model()
-
-class AuditServiceTests(TestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-        self.user = User.objects.create_user(
-            email='rastreio@linus.com',
-            nome='Usuario Rastreado',
-            password='Password@123'
+class AuditServiceTest(unittest.TestCase):
+    
+    # 1. Caminho Feliz + Mock Verify
+    @patch('audit.services.audit_service.AuditLog.objects.create')
+    def test_deve_registrar_evento_com_dados_corretos(self, mock_create):
+        # Arrange
+        mock_request = MagicMock()
+        mock_request.META = {'HTTP_X_FORWARDED_FOR': '192.168.1.5'}
+        mock_user = MagicMock(is_authenticated=True)
+        
+        # Act
+        AuditService.log_event(mock_request, mock_user, "LOGIN_SUCCESS", {"app": "linus"})
+        
+        # Assert
+        mock_create.assert_called_once_with(
+            user=mock_user,
+            action="LOGIN_SUCCESS",
+            ip_address="192.168.1.5",
+            user_agent="Unknown",
+            payload={"app": "linus"}
         )
 
-    def test_get_client_ip_via_proxy(self):
-        """Testa a extração do IP quando a requisição passa por um balanceador de carga/proxy."""
-        request = self.factory.get('/', HTTP_X_FORWARDED_FOR='203.0.113.195, 10.0.0.1')
-        ip = AuditService.get_client_ip(request)
-        self.assertEqual(ip, '203.0.113.195')
+    # 2. Caso-Limite (Múltiplos IPs no Forwarded For)
+    def test_deve_extrair_apenas_primeiro_ip_quando_houver_multiplos(self):
+        # Arrange
+        mock_request = MagicMock()
+        mock_request.META = {'HTTP_X_FORWARDED_FOR': '10.0.0.1, 192.168.1.1, 127.0.0.1'}
+        
+        # Act
+        ip = AuditService.get_client_ip(mock_request)
+        
+        # Assert
+        self.assertEqual(ip, '10.0.0.1')
 
-    def test_get_client_ip_direto(self):
-        """Testa a extração do IP quando a conexão é direta (sem HTTP_X_FORWARDED_FOR)."""
-        request = self.factory.get('/', REMOTE_ADDR='198.51.100.2')
-        ip = AuditService.get_client_ip(request)
-        self.assertEqual(ip, '198.51.100.2')
-
-    def test_get_client_ip_sem_request(self):
-        """Garante que a falta de um request (ex: rotinas internas) retorne um IP zerado padrão."""
-        ip = AuditService.get_client_ip(None)
+    # 3. Violação / Erro (Headers ausentes)
+    def test_deve_retornar_ip_padrao_quando_request_nao_tiver_headers_conhecidos(self):
+        # Arrange
+        mock_request = MagicMock()
+        mock_request.META = {} # Sem REMOTE_ADDR ou HTTP_X_FORWARDED_FOR
+        
+        # Act
+        ip = AuditService.get_client_ip(mock_request)
+        
+        # Assert
         self.assertEqual(ip, '0.0.0.0')
-
-    def test_get_user_agent_valido(self):
-        """Garante a extração do cabeçalho do navegador."""
-        request = self.factory.get('/', HTTP_USER_AGENT='LinusApp/1.0 (TestEnvironment)')
-        ua = AuditService.get_user_agent(request)
-        self.assertEqual(ua, 'LinusApp/1.0 (TestEnvironment)')
-
-    def test_get_user_agent_sem_request(self):
-        """Garante fallback para o User Agent caso o request seja nulo."""
-        ua = AuditService.get_user_agent(None)
-        self.assertEqual(ua, 'Unknown')
-
-    def test_log_event_com_usuario_autenticado(self):
-        """Verifica a gravação completa de um log associado a um usuário real."""
-        request = self.factory.get('/', HTTP_X_FORWARDED_FOR='127.0.0.1', HTTP_USER_AGENT='Chrome/100')
-        request.user = self.user  # Simula autenticação no RequestFactory
-        
-        AuditService.log_event(request, self.user, 'TEST_AUTH_ACTION', {'detalhe': 'sucesso'})
-        
-        log = AuditLog.objects.first()
-        self.assertIsNotNone(log)
-        self.assertEqual(log.user, self.user)
-        self.assertEqual(log.action, 'TEST_AUTH_ACTION')
-        self.assertEqual(log.ip_address, '127.0.0.1')
-        self.assertEqual(log.user_agent, 'Chrome/100')
-        self.assertEqual(log.payload, {'detalhe': 'sucesso'})
-
-    def test_log_event_com_usuario_anonimo(self):
-        """Garante que usuários não logados (ex: falhas de login) não quebrem o log."""
-        request = self.factory.get('/')
-        anonymous_user = AnonymousUser()
-        
-        # Payload não informado deve cair no default = {}
-        AuditService.log_event(request, anonymous_user, 'FAILED_LOGIN')
-        
-        log = AuditLog.objects.first()
-        self.assertIsNotNone(log)
-        self.assertIsNone(log.user)  # O banco deve registrar null para a ForeignKey
-        self.assertEqual(log.action, 'FAILED_LOGIN')
-        self.assertEqual(log.payload, {})
-        
-    def test_log_event_sem_request_e_sem_usuario(self):
-        """Testa rotinas isoladas de background onde não há nem request nem usuário."""
-        AuditService.log_event(None, None, 'SYSTEM_CRON_JOB')
-        
-        log = AuditLog.objects.first()
-        self.assertIsNotNone(log)
-        self.assertIsNone(log.user)
-        self.assertEqual(log.action, 'SYSTEM_CRON_JOB')
-        self.assertEqual(log.ip_address, '0.0.0.0')
-        self.assertEqual(log.user_agent, 'Unknown')

@@ -81,11 +81,20 @@ function LoginComponent() {
     if (refresh) localStorage.setItem("refresh_token", refresh);
 
     const decoded = jwtDecode<{ role: string; nome?: string }>(access);
-    setRole((decoded.role as Role) || "estudante");
+    const userRole = (decoded.role as Role) || "estudante";
+
+    setRole(userRole);
     login(decoded.nome || "Usuário");
 
     toast.success("Acesso liberado com sucesso!");
-    window.location.href = "/painel";
+
+    if (userRole === "admin-conteudo" || userRole === "conteudo") {
+      window.location.href = "/admin/conteudo";
+    } else if (userRole === "admin-sistema" || userRole === "sistema") {
+      window.location.href = "/admin/sistema";
+    } else {
+      window.location.href = "/painel";
+    }
   };
 
   const handleLerTermos = () => {

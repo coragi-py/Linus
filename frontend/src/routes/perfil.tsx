@@ -9,7 +9,7 @@ import { User, Lock, ShieldAlert, EyeOff, Eye, Save, AlertTriangle, FileText } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLinus, type Role } from "@/context/LinusContext";
 import { blacklistNicknames } from "@/lib/blacklist";
-
+import { Avatar } from "@/components/Avatar"; 
 export const Route = createFileRoute("/perfil")({
   component: PerfilComponent,
 });
@@ -223,14 +223,14 @@ function PerfilComponent() {
           </TabsList>
 
           {/* ABA 1: DADOS GERAIS */}
-          <TabsContent value="geral" className="space-y-6 max-w-md">
+          <TabsContent value="geral" className="space-y-6 max-w-3xl">
             <div>
               <h3 className="text-lg font-bold text-foreground">Informações Pessoais</h3>
               <p className="text-sm text-muted-foreground mb-6">
                 Atualize o nome como você quer ser chamado na plataforma.
               </p>
             </div>
-            <form onSubmit={handleNomeSubmit(onUpdateNome)} className="space-y-4">
+            <form onSubmit={handleNomeSubmit(onUpdateNome)} className="space-y-4 max-w-md">
               <div>
                 <label className="block text-xs font-semibold uppercase text-muted-foreground">
                   Nome de Exibição
@@ -256,6 +256,9 @@ function PerfilComponent() {
                 {isNomeSubmitting ? "Salvando..." : "Salvar Alterações"}
               </button>
             </form>
+            <div className="pt-6 mt-6 border-t border-border">
+              <Avatar />
+            </div>
           </TabsContent>
 
           {/* ABA 2: SEGURANÇA */}
