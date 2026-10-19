@@ -470,8 +470,53 @@ Base: `/api/v1/glossary/termos/` (ou `/api/v1/glossary/`)
 
 Base: `/api/v1/music/musicas/`
 
-- `GET`: Lista as sequências de notas gravadas.
-- `POST`: Salva uma sequência de até 128 notas tocadas no piano virtual (`{ "nome_musica": "Minha melodia", "notas": ["C4", "E4", "G4"] }`).
+### Regras de Visibilidade e Permissão
+- **Amostras Públicas (`id_usuario = null`, `is_publica = true`):** Visíveis para todos os usuários da plataforma e protegidas contra exclusão por estudantes (`403 Forbidden`).
+- **Gravações Privadas (`id_usuario = <uuid>`, `is_publica = false`):** Visíveis e gerenciáveis exclusivamente pelo próprio estudante autenticado que as gravou, com registro de auditoria (`MUSIC_RECORDING_CREATED` e `MUSIC_RECORDING_DELETED`).
+
+### 5.1. Listar Biblioteca do Playground (`GET /api/v1/music/musicas/`)
+Retorna as 3 amostras públicas da plataforma seguidas pelas gravações privadas do usuário autenticado (ordenadas da mais recente para a mais antiga).
+
+**Response `200 OK`**
+```json
+[
+  {
+    "id_musica": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "nome_musica": "Minha Gravação - 18/10/2026",
+    "notas": ["C4", "E4", "G4", "C5"],
+    "id_usuario": "7fc054c0-755e-44d1-a280-3a8e5ffe13a4",
+    "is_publica": false,
+    "data_criacao": "2026-10-18T20:15:00Z"
+  },
+  {
+    "id_musica": "00000000-0000-0000-0006-000000000001",
+    "nome_musica": "🌟 Brilha, Brilha Estrelinha (Amostra)",
+    "notas": ["C4", "C4", "G4", "G4", "A4", "A4", "G4", "F4", "F4", "E4", "E4", "D4", "D4", "C4"],
+    "id_usuario": null,
+    "is_publica": true,
+    "data_criacao": "2026-10-18T18:00:00Z"
+  }
+]
+```
+
+### 5.2. Salvar Nova Gravação (`POST /api/v1/music/musicas/`)
+
+**Request**
+
+```json
+{
+  "nome_musica": "Estudo em Dó Maior",
+  "notas": ["C4", "D4", "E4", "F4", "G4"]
+}
+
+```
+
+### 5.3. Excluir Gravação Privada (`DELETE /api/v1/music/musicas/<id_musica>/`)
+
+* Retorna `204 No Content` se a música pertencer ao usuário autenticado.
+* Retorna `403 Forbidden` se o usuário tentar excluir uma amostra pública (`is_publica = true`).
+
+```
 
 ---
 

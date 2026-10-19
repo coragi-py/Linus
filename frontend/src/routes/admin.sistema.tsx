@@ -78,7 +78,13 @@ function AdminSistema() {
         const dataUsers = await resUsers.json();
         const dataMetrics = await resMetrics.json();
 
-        setUsuarios(dataUsers);
+        const listaUsuarios = Array.isArray(dataUsers)
+          ? dataUsers
+          : Array.isArray(dataUsers?.results)
+            ? dataUsers.results
+            : [];
+
+        setUsuarios(listaUsuarios);
         setMetricas(dataMetrics);
       } catch (error) {
         console.error("Erro na comunicação:", error);
@@ -586,9 +592,20 @@ function AdminSistema() {
             {/* Controles de Paginação */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-4 text-xs">
               <span className="font-semibold text-muted-foreground">
-                Página {paginaAtual} de {totalPaginas} ({usuariosFiltrados.length} registros)
+                Página {paginaAtual} de {totalPaginas} · Mostrando{" "}
+                {usuariosFiltrados.length === 0 ? 0 : (paginaAtual - 1) * ITEMS_PER_PAGE + 1}–
+                {Math.min(paginaAtual * ITEMS_PER_PAGE, usuariosFiltrados.length)} de{" "}
+                {usuariosFiltrados.length} registros
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPaginaAtual(1)}
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  « Primeira
+                </button>
                 <button
                   type="button"
                   disabled={paginaAtual <= 1}
@@ -597,6 +614,11 @@ function AdminSistema() {
                 >
                   <ChevronLeft className="size-4" /> Anterior
                 </button>
+
+                <span className="px-2 font-bold text-foreground">
+                  {paginaAtual} / {totalPaginas}
+                </span>
+
                 <button
                   type="button"
                   disabled={paginaAtual >= totalPaginas}
@@ -604,6 +626,14 @@ function AdminSistema() {
                   className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
                 >
                   Próxima <ChevronRight className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPaginaAtual(totalPaginas)}
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  Última »
                 </button>
               </div>
             </div>

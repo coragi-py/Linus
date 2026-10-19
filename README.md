@@ -105,7 +105,7 @@ python manage.py runserver
 
 ```
 
-> Ao executar `python manage.py migrate`, o sistema cria todas as tabelas e executa automaticamente as _migrations_ de carga inicial: 4 unidades didáticas, 8 lições com guia teórico e partitura demonstrativa, 32 exercícios interativos, 3 medalhas, 8 questões de triagem, 31 termos do glossário musical e 1.000 contas de estudantes.
+> Ao executar `python manage.py migrate`, o sistema cria todas as tabelas e executa automaticamente as *migrations* de carga inicial: 4 unidades didáticas, 8 lições com guia teórico e partitura demonstrativa, 32 exercícios interativos, 3 medalhas, 8 questões de triagem, 31 termos do glossário musical, 3 músicas públicas de amostra no Playground e 1.000 contas de estudantes com hashes e salts individualizados.
 
 ### 4. Configurar e iniciar o Frontend (Porta 8080)
 

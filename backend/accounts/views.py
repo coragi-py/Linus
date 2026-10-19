@@ -534,7 +534,7 @@ class AdminSystemMetricsView(APIView):
                 "action": log.action,
                 "usuario": log.user.email if log.user else "Anônimo / Sistema",
                 "ip_address": log.ip_address or "0.0.0.0",
-                "timestamp": log.timestamp.strftime("%d/%m/%Y %H:%M"),
+                "timestamp": timezone.localtime(log.timestamp).strftime("%d/%m/%Y %H:%M"),
             }
             for log in AuditLog.objects.select_related("user").order_by("-timestamp")[:10]
         ]
