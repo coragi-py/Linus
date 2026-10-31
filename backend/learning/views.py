@@ -110,6 +110,12 @@ class ModuloViewSet(viewsets.ModelViewSet):
             {'modulo_id': modulo_id, 'titulo': titulo},
         )
 
+    def get_success_headers(self, data):
+        headers = super().get_success_headers(data)
+        if data.get("id"):
+            headers["Location"] = f"/api/v1/learning/modulos/{data['id']}/"
+        return headers
+
 
 class AulaViewSet(viewsets.ModelViewSet):
     queryset = Aula.objects.all().order_by('modulo__ordem', 'ordem')
@@ -145,6 +151,12 @@ class AulaViewSet(viewsets.ModelViewSet):
             'AULA_DELETED',
             {'aula_id': aula_id, 'titulo': titulo},
         )
+
+    def get_success_headers(self, data):
+        headers = super().get_success_headers(data)
+        if data.get("id"):
+            headers["Location"] = f"/api/v1/learning/aulas/{data['id']}/"
+        return headers
 
     @action(
         detail=True,
