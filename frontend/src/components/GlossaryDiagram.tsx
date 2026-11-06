@@ -15,7 +15,7 @@ export function GlossaryDiagram({ diagram }: { diagram: string }) {
     context.setStrokeStyle("#2B6CB0");
     const stave = new Stave(15, -25, 120);
     stave.setContext(context);
-    stave.getContext().setFillStyle("#2B6CB0").setStrokeStyle("#2B6CB0");
+    stave.getContext()?.setFillStyle("#2B6CB0").setStrokeStyle("#2B6CB0");
     //Pautas e Claves
     if (["treble", "bass", "alto", "tenor", "percussion"].includes(diagram)) {
       stave.addClef(diagram).draw();

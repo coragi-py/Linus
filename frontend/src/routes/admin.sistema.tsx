@@ -32,6 +32,7 @@ import { type Role } from "@/context/LinusContext";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/constants";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: AdminSistema,

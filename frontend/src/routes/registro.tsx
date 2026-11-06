@@ -84,7 +84,7 @@ function RegistroComponent() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<RegistroFormValues>({
-    resolver: zodResolver(fluxoGooglePendente ? googleSchema : manualSchema),
+    resolver: zodResolver(fluxoGooglePendente ? googleSchema : manualSchema) as any,
     mode: "onChange",
     defaultValues: { aceiteTermos: false },
   });
@@ -158,7 +158,7 @@ function RegistroComponent() {
   const onSubmit = async (data: RegistroFormValues) => {
     try {
       let response;
-      const result;
+      let result: any = null;
 
       if (fluxoGooglePendente && googleIdTokenTemp) {
         response = await fetch("${API_BASE_URL}/api/v1/auth/google/", {

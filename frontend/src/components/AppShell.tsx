@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       const options = avatarOptions || { seed: state.name || 'linus', collection: 'bottts' }; 
       const selectedCollection = options.collection === 'avataaars' ? avataaars : bottts;
 
-      const avatar = createAvatar(selectedCollection, {
+      const avatar = createAvatar(selectedCollection as any, {
         ...options,
         // Garantimos que a imagem pequena obedeça à mesma regra de esconder óculos
         accessories: options.accessories?.[0] === 'none' ? [] : options.accessories,
