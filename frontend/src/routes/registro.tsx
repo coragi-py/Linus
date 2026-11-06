@@ -158,7 +158,7 @@ function RegistroComponent() {
   const onSubmit = async (data: RegistroFormValues) => {
     try {
       let response;
-      let result;
+      const result;
 
       if (fluxoGooglePendente && googleIdTokenTemp) {
         response = await fetch("${API_BASE_URL}/api/v1/auth/google/", {

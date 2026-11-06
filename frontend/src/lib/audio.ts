@@ -2,7 +2,7 @@
 type ToneModule = typeof import("tone");
 
 let tone: ToneModule | null = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let synth: any = null;
 let starting: Promise<void> | null = null;
 
@@ -39,7 +39,7 @@ export function noteOff(note: string) {
   if (!synth) return;
   try {
     synth.triggerRelease(note);
-  } catch (e) {
+  } catch (_e) {
     // Ignora erros se a nota já foi liberada ou não existe
   }
 }

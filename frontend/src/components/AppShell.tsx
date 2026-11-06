@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { createAvatar } from "@dicebear/core";
 import { bottts, avataaars } from "@dicebear/collection";
 import { Link, useRouterState, Navigate } from "@tanstack/react-router";
-import { Flame, LogOut, Sparkles, UserCircle, Settings } from "lucide-react";
+import { Flame, LogOut, Sparkles, Settings } from "lucide-react";
 import { LinusLogo } from "./Logo";
 import { AiAssistant } from "./AiAssistant";
 import { useLinus, ROLE_LABEL } from "@/context/LinusContext";
