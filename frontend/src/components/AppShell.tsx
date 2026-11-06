@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         const token = localStorage.getItem("access_token");
         if (!token) return;
         
-        const response = await fetch("http://localhost:8000/api/v1/auth/me/", {
+        const response = await fetch("${API_BASE_URL}/api/v1/auth/me/", {
           headers: { Authorization: `Bearer ${token}` }
         });
         

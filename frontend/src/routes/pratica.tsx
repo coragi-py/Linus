@@ -49,7 +49,7 @@ interface MusicaSalva {
   data_criacao: string;
 }
 
-const API_MUSIC_URL = "http://localhost:8000/api/v1/music/musicas/";
+const API_MUSIC_URL = "${API_BASE_URL}/api/v1/music/musicas/";
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");

@@ -42,7 +42,7 @@ export type LinusState = {
 };
 
 const STORAGE_KEY = "linus.state.v1";
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = "${API_BASE_URL}/api/v1";
 
 const EMPTY_TOPICS: Record<string, { erros: number; total: number }> = {
   "Leitura de Partituras": { erros: 0, total: 0 },

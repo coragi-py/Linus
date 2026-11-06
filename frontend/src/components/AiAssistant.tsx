@@ -35,7 +35,7 @@ export function AiAssistant({
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/ai/chat/", {
+      const response = await fetch("${API_BASE_URL}/api/v1/ai/chat/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

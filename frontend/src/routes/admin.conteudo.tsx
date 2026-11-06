@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin/conteudo")({
   component: AdminConteudoPage,
 });
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = "${API_BASE_URL}/api/v1";
 
 axios.interceptors.request.use(
   (config) => {

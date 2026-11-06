@@ -104,7 +104,7 @@ function LoginComponent() {
 
   const onLogin = async (data: LoginFormValues) => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login/", {
+      const response = await fetch("${API_BASE_URL}/api/v1/auth/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -142,7 +142,7 @@ function LoginComponent() {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     const idToken = credentialResponse.credential;
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/google/", {
+      const response = await fetch("${API_BASE_URL}/api/v1/auth/google/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken, terms_accepted: false, terms_version: "" }),
@@ -186,7 +186,7 @@ function LoginComponent() {
     try {
       let response;
       if (loginTemporario?.googleToken) {
-        response = await fetch("http://localhost:8000/api/v1/auth/google/", {
+        response = await fetch("${API_BASE_URL}/api/v1/auth/google/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -196,7 +196,7 @@ function LoginComponent() {
           }),
         });
       } else {
-        response = await fetch("http://localhost:8000/api/v1/auth/login/", {
+        response = await fetch("${API_BASE_URL}/api/v1/auth/login/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -228,7 +228,7 @@ function LoginComponent() {
 
   const onVerify2FA = async (data: OtpFormValues) => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/verify-2fa/", {
+      const response = await fetch("${API_BASE_URL}/api/v1/auth/verify-2fa/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginTemporario?.email, otp: data.otp }),
@@ -243,7 +243,7 @@ function LoginComponent() {
 
   const onEsqueciSenha = async (data: EsqueciSenhaFormValues) => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/password-reset/", {
+      const response = await fetch("${API_BASE_URL}/api/v1/auth/password-reset/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: data.email }),

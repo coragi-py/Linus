@@ -67,8 +67,8 @@ function AdminSistema() {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [resUsers, resMetrics] = await Promise.all([
-          fetch("http://localhost:8000/api/v1/auth/admin/users/", { headers }),
-          fetch("http://localhost:8000/api/v1/auth/admin/metrics/", { headers }),
+          fetch("${API_BASE_URL}/api/v1/auth/admin/users/", { headers }),
+          fetch("${API_BASE_URL}/api/v1/auth/admin/metrics/", { headers }),
         ]);
 
         if (!resUsers.ok || !resMetrics.ok) {
@@ -140,7 +140,7 @@ function AdminSistema() {
   const handleUpdateRole = async (userId: string, newRole: Role) => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`http://localhost:8000/api/v1/auth/admin/users/${userId}/`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/admin/users/${userId}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -167,7 +167,7 @@ function AdminSistema() {
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`http://localhost:8000/api/v1/auth/admin/users/${userId}/`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/admin/users/${userId}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

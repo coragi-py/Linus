@@ -58,7 +58,7 @@ export function Avatar() {
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('token'); 
       
-      const response = await fetch('http://localhost:8000/api/v1/auth/me/', {
+      const response = await fetch('${API_BASE_URL}/api/v1/auth/me/', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
