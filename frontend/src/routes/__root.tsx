@@ -119,7 +119,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  const googleClientId = import.meta.env["VITE_GOOGLE_CLIENT_ID"] || "";
 
   return (
     <QueryClientProvider client={queryClient}>
