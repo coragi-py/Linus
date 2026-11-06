@@ -225,18 +225,6 @@ function Pratica() {
                 <Music2 className="size-4 text-primary" aria-hidden />
                 <button
                   type="button"
-                  onClick={() => setClef("treble")}
-                  aria-pressed={clef === "treble"}
-                  className={
-                    clef === "treble"
-                      ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
-                      : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"
-                  }
-                >
-                  Clave de Sol
-                </button>
-                <button
-                  type="button"
                   onClick={() => setClef("bass")}
                   aria-pressed={clef === "bass"}
                   className={
