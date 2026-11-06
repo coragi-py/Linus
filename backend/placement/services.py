@@ -1,8 +1,14 @@
+from django.core.cache import cache
+from django.utils import timezone
+
 class RespostasVaziasException(Exception):
     pass
 
 class PerguntasNaoEncontradasException(Exception):
     pass
+
+# 30 minutos em segundos (30 * 60)
+PLACEMENT_CACHE_TTL_SECONDS = 1800
 
 class TriagemService:
     @staticmethod

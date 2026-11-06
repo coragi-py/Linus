@@ -184,6 +184,14 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "linus-placement-cache",
+        "TIMEOUT": 1800,  # 30 minutos (1800 segundos)
+    }
+}
+
 # -----------------------------------------------------------------------------
 # COMUNICAÇÃO SEGURA (BREVO SMTP)
 # -----------------------------------------------------------------------------

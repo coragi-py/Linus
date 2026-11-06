@@ -6,6 +6,11 @@ on:
   push:
     branches: ["develop", "main"]
 
+# Cancela execuções anteriores da mesma branch se um novo commit for enviado em seguida
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   testar-backend:
     runs-on: ubuntu-latest
@@ -33,19 +38,21 @@ jobs:
         run: |
           cat <<EOF > .env
           DJANGO_SECRET_KEY=chave-secreta-muito-segura-github-actions-123
+          DJANGO_DEBUG=False
           DATABASE_URL=sqlite:///:memory:
           GOOGLE_OAUTH2_CLIENT_ID=dummy-client-id
           FRONTEND_URL=http://localhost:8080
           DEFAULT_FROM_EMAIL=noreply@linus.app.br
           EOF
 
-      - name: 5. Verificar migrações pendentes do Django
+      - name: 5. Verificar integridade do sistema e migrações pendentes do Django
         working-directory: backend
         run: |
+          python manage.py check
           python manage.py makemigrations --check --dry-run
 
-      - name: 6. Rodar suíte completa de testes e verificar cobertura
+      - name: 6. Rodar suíte completa de testes (Unitários + Integração) e verificar cobertura
         working-directory: backend
         run: |
-          coverage run --omit="*/migrations/*,*/tests/*,manage.py" manage.py test accounts audit glossary music placement learning exercises gamification progress
+          coverage run --omit="*/migrations/*,*/tests/*,manage.py" manage.py test accounts audit glossary music placement learning exercises gamification progress -v 2
           coverage report -m --fail-under=70
