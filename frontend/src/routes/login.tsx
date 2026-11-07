@@ -147,7 +147,7 @@ function LoginComponent() {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     const idToken = credentialResponse.credential;
     try {
-      const response = await fetch(`${API_URL}/auth/google/"`, {
+      const response = await fetch(`${API_URL}/auth/google/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken, terms_accepted: false, terms_version: "" }),
