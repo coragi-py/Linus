@@ -361,28 +361,28 @@ export default function AdminConteudoPage() {
     };
 
     if (exercicioForm.tipo === "note-reading" || exercicioForm.tipo === "keyboard") {
-      gabarito["stave"] = exercicioForm.staveStr
+      gabarito.stave = exercicioForm.staveStr
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
     }
     if (exercicioForm.tipo === "note-reading" || exercicioForm.tipo === "multiple-choice") {
-      gabarito["options"] = exercicioForm.optionsStr
+      gabarito.options = exercicioForm.optionsStr
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
     }
     if (exercicioForm.tipo === "keyboard") {
-      gabarito["targetNote"] = exercicioForm.answer.trim();  // gabarito.stave, options, tagetNote, sequence, answer foram necessários adiconar para gabarito["stave"], gabarito["options"]...
+      gabarito.targetNote = exercicioForm.answer.trim();  // gabarito.stave, options, tagetNote, sequence, answer foram necessários adiconar para gabarito["stave"], gabarito["options"]...
     }
     if (exercicioForm.tipo === "builder") {
       const seq = exercicioForm.sequenceStr
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      gabarito["sequence"] = seq;
-      if (!gabarito["answer"]) {
-        gabarito["answer"] = seq.join(",");
+      gabarito.sequence = seq;
+      if (!gabarito.answer) {
+        gabarito.answer = seq.join(",");
       }
     }
 
