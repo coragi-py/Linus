@@ -23,6 +23,11 @@ const validarNomeApropriado = (nome: string) => {
   return !blacklistNicknames.some((palavra) => nomeLower.includes(palavra));
 };
 
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
 const regrasBase = {
   nome: z
     .string()
@@ -109,7 +114,7 @@ function RegistroComponent() {
     const idToken = credentialResponse.credential;
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/google/", {
+      const response = await fetch(`${API_URL}/auth/google/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -161,7 +166,7 @@ function RegistroComponent() {
       let result;
 
       if (fluxoGooglePendente && googleIdTokenTemp) {
-        response = await fetch("http://localhost:8000/api/v1/auth/google/", {
+        response = await fetch(`${API_URL}/auth/google/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -173,7 +178,7 @@ function RegistroComponent() {
           }),
         });
       } else {
-        response = await fetch("http://localhost:8000/api/v1/auth/register/", {
+        response = await fetch(`${API_URL}/auth/register/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

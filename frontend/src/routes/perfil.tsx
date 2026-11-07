@@ -14,6 +14,11 @@ export const Route = createFileRoute("/perfil")({
   component: PerfilComponent,
 });
 
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
 // Validação customizada contra palavras impróprias
 const validarNomeApropriado = (nome: string) => {
   const nomeLower = nome.toLowerCase().trim();
@@ -81,7 +86,7 @@ function PerfilComponent() {
     const fetchPrivacyData = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch("http://localhost:8000/api/v1/auth/privacy/data/", {
+        const response = await fetch(`${API_URL}/auth/privacy/data/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -99,7 +104,7 @@ function PerfilComponent() {
   const onUpdateNome = async (data: NomeFormValues) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/profile/update/", {
+      const response = await fetch(`${API_URL}/auth/profile/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +132,7 @@ function PerfilComponent() {
   const onChangePassword = async (data: SenhaFormValues) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/password/change/", {
+      const response = await fetch(`${API_URL}/auth/password/change/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +162,7 @@ function PerfilComponent() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/privacy/revoke-consent/", {
+      const response = await fetch(`${API_URL}/auth/privacy/revoke-consent/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -181,7 +186,7 @@ function PerfilComponent() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/privacy/delete-account/", {
+      const response = await fetch(`${API_URL}/auth/privacy/delete-account/`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

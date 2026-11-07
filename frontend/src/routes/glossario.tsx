@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { GlossaryDiagram } from "@/components/GlossaryDiagram";
 import { cn } from "@/lib/utils";
 
+
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
 export const Route = createFileRoute("/glossario")({
   head: () => ({
     meta: [
@@ -46,7 +52,7 @@ function Dicionario() {
     // Busca o token no navegador
     const token = localStorage.getItem("access_token");
 
-    fetch("http://127.0.0.1:8000/api/v1/glossary/", {
+    fetch(`${API_URL}/glossary/`, {
       method: "GET",
       headers: {
         Authorization: token ? `Bearer ${token}` : "",

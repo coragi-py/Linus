@@ -86,7 +86,7 @@ def seed_1000_users(apps, schema_editor):
 
         novos_usuarios.append(
             CustomUser(
-                id=uuid.UUID(f"00000000-0000-0000-0009-{i:012d}"),
+                id=uuid.uuid4(),
                 email=email,
                 nome=nome_completo,
                 password=senha_hash_unico,

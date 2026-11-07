@@ -28,7 +28,7 @@ type Status = "idle" | "correct" | "wrong";
 function LessonPage() {
   const { lessonId } = Route.useParams();
   const navigate = useNavigate();
-  const { state, findLessonById, completeLesson, loseHeart, refillHearts, registerAnswer } =
+  const { state, findLessonById, completeLesson, registerAnswer } =
     useLinus();
 
   const found = useMemo(() => findLessonById(lessonId), [findLessonById, lessonId]);
@@ -44,7 +44,6 @@ function LessonPage() {
   const startTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    refillHearts();
     setEtapaAula("teoria");
     setIndex(0);
     setStatus("idle");
@@ -109,7 +108,7 @@ function LessonPage() {
     });
     void playFeedback(ok);
     if (ok) setAcertos((a) => a + 1);
-    else loseHeart();
+    
   }
 
   function avancar() {
@@ -193,18 +192,6 @@ function LessonPage() {
             </button>
           )}
 
-          <p className="flex items-center gap-1" aria-label={`${state.hearts} vidas restantes`}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Heart
-                key={i}
-                className={cn(
-                  "size-5",
-                  i < state.hearts ? "fill-destructive text-destructive" : "text-muted",
-                )}
-                aria-hidden
-              />
-            ))}
-          </p>
         </div>
       </header>
 

@@ -17,6 +17,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
 const NAV: { to: string; label: string; roles: string[] }[] = [
   { to: "/trilha", label: "Trilha", roles: ["estudante", "usuario"] },
   { to: "/pratica", label: "Prática Livre", roles: ["estudante", "usuario"] },
@@ -51,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         const token = localStorage.getItem("access_token");
         if (!token) return;
         
-        const response = await fetch("http://localhost:8000/api/v1/auth/me/", {
+        const response = await fetch(`${API_URL}/auth/me/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         

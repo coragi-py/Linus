@@ -27,6 +27,7 @@ drf-spectacular>=0.27.0 # Geração automática de documentação OpenAPI/Swagge
 
 # Servidor WSGI de Produção & Variáveis de Ambiente
 gunicorn>=21.2.0 # Servidor WSGI de produção para aplicações Python, recomendado para deploy em ambientes de produção
+whitenoise # Gerenciador de arquivos estaticos
 python-dotenv>=1.0.0 # Gerenciamento de variáveis de ambiente
 
 # Testes & Qualidade

@@ -18,7 +18,11 @@ load_dotenv(dotenv_path=env_path)
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.up.railway.app").split(",")
+    if h.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -53,6 +57,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -62,10 +67,12 @@ MIDDLEWARE = [
 ]
 
 # Proteção Rigorosa de CORS (Não permitir ALL_ORIGINS em produção)
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", 
-    "http://localhost:8080"
-).split(",")
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080").split(",")
+    if o.strip()
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080")
@@ -128,6 +135,17 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SAMESITE = "Strict"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Permite previews dinâmicos da Vercel se necessário e domínios de produção
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080"),
+    ).split(",")
+    if o.strip()
+]
 
 # -----------------------------------------------------------------------------
 # DJANGO REST FRAMEWORK & JWT
@@ -177,15 +195,31 @@ EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
 
-# Testes
+#----------------------------------------------------------------------------
+# CACHE EM MEMÓRIA E SESSÃO TEMPORÁRIA DE TRIAGEM (TTL: 30 MINUTOS) 
+#----------------------------------------------------------------------------
+PLACEMENT_SESSION_TIMEOUT_MINUTES = 30 
+PLACEMENT_SESSION_TIMEOUT_SECONDS = PLACEMENT_SESSION_TIMEOUT_MINUTES * 60  # 1800s 
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "linus-cache",
+        "TIMEOUT": PLACEMENT_SESSION_TIMEOUT_SECONDS,  # 30 minutos (1800 segundos)
+    }
+}
+
+# -----------------------------------------------------------------------------
+# AMBIENTE DE TESTES
+# -----------------------------------------------------------------------------
 if 'test' in sys.argv:
-    # Mantém o SQLite em memória
+    # Mantém o SQLite em memória para testes rápidos
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
     }
     
-    # Desativa o Throttling e Rate Limiting substituindo o cache real por um cache fantasma
+    # Desativa o Throttling, Rate Limiting e expiração substituindo por um cache fantasma
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
@@ -200,5 +234,6 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

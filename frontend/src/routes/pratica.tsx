@@ -49,7 +49,12 @@ interface MusicaSalva {
   data_criacao: string;
 }
 
-const API_MUSIC_URL = "http://localhost:8000/api/v1/music/musicas/";
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
+const API_MUSIC_URL = `${API_URL}/music/musicas/`;
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");
@@ -67,7 +72,6 @@ function Pratica() {
   const [history, setHistory] = useState<string[]>([]);
   const [clef, setClef] = useState<"treble" | "bass">("treble");
   const [isSaving, setIsSaving] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [musicTitle, setMusicTitle] = useState("");
   const [savedMusics, setSavedMusics] = useState<MusicaSalva[]>([]);
@@ -234,18 +238,6 @@ function Pratica() {
                   }
                 >
                   Clave de Sol
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClef("bass")}
-                  aria-pressed={clef === "bass"}
-                  className={
-                    clef === "bass"
-                      ? "focus-ring rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
-                      : "focus-ring rounded-md px-3 py-1.5 text-xs font-bold text-muted-foreground"
-                  }
-                >
-                  Clave de Fá
                 </button>
               </div>
 
