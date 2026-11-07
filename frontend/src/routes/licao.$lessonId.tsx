@@ -28,7 +28,7 @@ type Status = "idle" | "correct" | "wrong";
 function LessonPage() {
   const { lessonId } = Route.useParams();
   const navigate = useNavigate();
-  const { state, findLessonById, completeLesson, loseHeart, refillHearts, registerAnswer } =
+  const { state, findLessonById, completeLesson, registerAnswer } =
     useLinus();
 
   const found = useMemo(() => findLessonById(lessonId), [findLessonById, lessonId]);
@@ -44,7 +44,6 @@ function LessonPage() {
   const startTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    refillHearts();
     setEtapaAula("teoria");
     setIndex(0);
     setStatus("idle");
@@ -109,7 +108,7 @@ function LessonPage() {
     });
     void playFeedback(ok);
     if (ok) setAcertos((a) => a + 1);
-    else loseHeart();
+    
   }
 
   function avancar() {
