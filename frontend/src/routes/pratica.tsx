@@ -48,9 +48,13 @@ interface MusicaSalva {
   is_publica?: boolean;
   data_criacao: string;
 }
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const API_MUSIC_URL = `${API_URL}/api/v1/music/musicas/`;
+const API_URL = `${
+  (import.meta.env.VITE_API_URL || "http://localhost:8000")
+    .replace(/\/+$/, "")
+}/api/v1`;
+
+const API_MUSIC_URL = `${API_URL}/music/musicas/`;
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");
