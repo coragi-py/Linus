@@ -19,11 +19,6 @@ import { jwtDecode } from "jwt-decode";
 import { useLinus, type Role } from "@/context/LinusContext";
 import { VERSAO_TERMOS_USO } from "@/lib/constants";
 
-const API_URL = `${
-  (import.meta.env.VITE_API_URL || "http://localhost:8000")
-    .replace(/\/+$/, "")
-}/api/v1`;
-
 export const Route = createFileRoute("/login")({
   component: LoginComponent,
 });
@@ -109,7 +104,7 @@ function LoginComponent() {
 
   const onLogin = async (data: LoginFormValues) => {
     try {
-      const response = await fetch(`${API_URL}/auth/login/`, {
+      const response = await fetch("http://localhost:8000/api/v1/auth/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +142,7 @@ function LoginComponent() {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     const idToken = credentialResponse.credential;
     try {
-      const response = await fetch(`${API_URL}/auth/google/`, {
+      const response = await fetch("http://localhost:8000/api/v1/auth/google/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken, terms_accepted: false, terms_version: "" }),
@@ -191,7 +186,7 @@ function LoginComponent() {
     try {
       let response;
       if (loginTemporario?.googleToken) {
-        response = await fetch(`${API_URL}/auth/google/`, {
+        response = await fetch("http://localhost:8000/api/v1/auth/google/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -201,7 +196,7 @@ function LoginComponent() {
           }),
         });
       } else {
-        response = await fetch(`${API_URL}/auth/login/`, {
+        response = await fetch("http://localhost:8000/api/v1/auth/login/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -233,7 +228,7 @@ function LoginComponent() {
 
   const onVerify2FA = async (data: OtpFormValues) => {
     try {
-      const response = await fetch(`${API_URL}/auth/verify-2fa/`, {
+      const response = await fetch("http://localhost:8000/api/v1/auth/verify-2fa/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginTemporario?.email, otp: data.otp }),
@@ -248,7 +243,7 @@ function LoginComponent() {
 
   const onEsqueciSenha = async (data: EsqueciSenhaFormValues) => {
     try {
-      const response = await fetch(`${API_URL}/auth/password-reset/`, {
+      const response = await fetch("http://localhost:8000/api/v1/auth/password-reset/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: data.email }),
