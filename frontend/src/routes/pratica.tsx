@@ -62,7 +62,7 @@ function getAuthHeaders(): Record<string, string> {
     "Content-Type": "application/json",
   };
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return headers;
 }
@@ -239,7 +239,7 @@ function Pratica() {
                 >
                   Clave de Sol
                 </button>
-              </div>git
+              </div>
 
               <Stave
                 data={{
