@@ -191,7 +191,7 @@ function LoginComponent() {
     try {
       let response;
       if (loginTemporario?.googleToken) {
-        response = await fetch(`/auth/google/`, {
+        response = await fetch(`${API_URL}/auth/google/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -201,7 +201,7 @@ function LoginComponent() {
           }),
         });
       } else {
-        response = await fetch(`/auth/login/`, {
+        response = await fetch(`${API_URL}/auth/login/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -233,7 +233,7 @@ function LoginComponent() {
 
   const onVerify2FA = async (data: OtpFormValues) => {
     try {
-      const response = await fetch(`/auth/verify-2fa/`, {
+      const response = await fetch(`${API_URL}/auth/verify-2fa/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginTemporario?.email, otp: data.otp }),
