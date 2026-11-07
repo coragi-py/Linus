@@ -193,18 +193,6 @@ function LessonPage() {
             </button>
           )}
 
-          <p className="flex items-center gap-1" aria-label={`${state.hearts} vidas restantes`}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Heart
-                key={i}
-                className={cn(
-                  "size-5",
-                  i < state.hearts ? "fill-destructive text-destructive" : "text-muted",
-                )}
-                aria-hidden
-              />
-            ))}
-          </p>
         </div>
       </header>
 
