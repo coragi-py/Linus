@@ -72,8 +72,8 @@ function AdminSistema() {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [resUsers, resMetrics] = await Promise.all([
-          fetch(`${API_URL}/auth/admin/users/"`, { headers }),
-          fetch(`${API_URL}/auth/admin/metrics/"`, { headers }),
+          fetch(`${API_URL}/auth/admin/users/`, { headers }),
+          fetch(`${API_URL}/auth/admin/metrics/`, { headers }),
         ]);
 
         if (!resUsers.ok || !resMetrics.ok) {
