@@ -1,4 +1,4 @@
-# Esse arquivo cria métodos http GET, POST, PUT E DELETE de forma automatica (frontend só irá listar na página de alunos), por Anny em 07/09 
+# Esse arquivo cria métodos http GET, POST, PUT E DELETE de forma automatica (frontend só irá listar na página de alunos), por Anny em 07/09. 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import Glossario

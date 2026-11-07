@@ -12,6 +12,8 @@ const searchSchema = z.object({
   email: z.string().catch(""),
 });
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export const Route = createFileRoute("/recuperar-senha")({
   validateSearch: searchSchema,
   component: RecuperarSenhaComponent,
@@ -79,7 +81,7 @@ function RecuperarSenhaComponent() {
   // Envio da nova senha e dos parâmetros extraídos da URL para o Backend
   const onSubmit = async (data: NovaSenhaFormValues) => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/password-reset/confirm/", {
+      const response = await fetch(`${API_URL}/api/v1/auth/password-reset/confirm/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

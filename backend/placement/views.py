@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from .models import PerguntaTriagem, OpcaoTriagem, SessaoTriagem
 from .serializers import PerguntaTriagemSerializer
+from .services import TriagemService, RespostasVaziasException, PerguntasNaoEncontradasException
 
 # ViewSet para o CRUD de Perguntas da Triagem
 class PerguntaTriagemViewSet(viewsets.ModelViewSet):
@@ -27,42 +28,44 @@ class TriagemAPIView(APIView):
 
     def post(self, request):
         respostas = request.data.get('respostas', {})
-        if not respostas:
-            return Response({"erro": "Nenhuma resposta fornecida"}, status=status.HTTP_400_BAD_REQUEST)
-
-        pontuacao_total = 0
-        acertos = 0
-        total_respondido = len(respostas)
         perguntas_ativas = PerguntaTriagem.objects.filter(ativo=True)
-        total_questoes = perguntas_ativas.count()
-        pontos_maximos = 0
 
+        # 1. PREPARAÇÃO (Transformar dados do ORM em dicionários puros para o Service)
+        perguntas_lista = []
+        opcoes_dict = {}
+        
         for pergunta in perguntas_ativas:
-            peso_maximo_pergunta = max(pergunta.opcoes.values_list('peso_perfil', flat=True), default=1)
-            pontos_maximos += peso_maximo_pergunta
+            peso_maximo = max(pergunta.opcoes.values_list('peso_perfil', flat=True), default=1)
+            perguntas_lista.append({
+                'id': str(pergunta.id), 
+                'peso_maximo': peso_maximo
+            })
             
             resposta_id = respostas.get(str(pergunta.id))
             if resposta_id:
                 try:
                     opcao = OpcaoTriagem.objects.get(id=resposta_id)
-                    pontuacao_total += opcao.peso_perfil
-                    if opcao.peso_perfil == peso_maximo_pergunta:
-                        acertos += 1
+                    opcoes_dict[str(resposta_id)] = {'peso_perfil': opcao.peso_perfil}
                 except OpcaoTriagem.DoesNotExist:
-                    continue
+                    pass
 
-        media = pontuacao_total / total_respondido if total_respondido > 0 else 1
-        
-        if media <= 1.5:
-            nivel = 'Iniciante'
+        # 2. EXECUÇÃO DA REGRA DE NEGÓCIO ISOLADA
+        try:
+            nivel, acertos, pontuacao_total, pontos_maximos = TriagemService.calcular_nivel(
+                respostas, perguntas_lista, opcoes_dict
+            )
+        except (RespostasVaziasException, PerguntasNaoEncontradasException) as e:
+            return Response({"erro": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. DEFINIÇÃO DO MÓDULO (Pós-processamento visual)
+        if nivel == 'Iniciante':
             modulo = {"titulo": "Unidade 1: Leitura de Partituras", "descricao": "Pauta, clave de Sol, notas e figuras de duração."}
-        elif media <= 2.5:
-            nivel = 'Intermediário'
+        elif nivel == 'Intermediário':
             modulo = {"titulo": "Unidade 2: Intervalos e Escalas", "descricao": "Estrutura de tons, semitons e formação de escalas maiores."}
         else:
-            nivel = 'Praticante Empírico'
             modulo = {"titulo": "Unidade 3: Harmonia Funcional", "descricao": "Acordes, campo harmônico e aplicação prática no piano."}
 
+        # 4. PERSISTÊNCIA E RETORNO HTTP
         session_key = f"sess_{uuid.uuid4().hex[:12]}"
         SessaoTriagem.objects.create(
             session_key=session_key,
@@ -77,7 +80,7 @@ class TriagemAPIView(APIView):
             'sessionKey': session_key,
             'estatisticas': {
                 'acertos': acertos,
-                'total_questoes': total_questoes,
+                'total_questoes': perguntas_ativas.count(),
                 'pontos': pontuacao_total,
                 'pontos_maximos': pontos_maximos
             },

@@ -1,218 +1,172 @@
 # Linus
 
-> Plataforma web de apoio ao aprendizado de música, organizada como uma aplicação cliente-servidor com frontend TypeScript e API backend em Django.
+Plataforma web interativa para o ensino autônomo e introdutório de teoria musical, desenvolvida como Projeto Final de Curso (PFC) em Engenharia de Software na Universidade de Mogi das Cruzes (UMC).
 
-## Visão geral
+## Visão Geral
 
-O Linus reúne recursos de aprendizagem musical, trilhas e lições, prática, glossário, triagem de nível, acompanhamento de progresso, gamificação e áreas administrativas. O projeto foi estruturado em dois componentes principais:
+O **Linus** integra conteúdos didáticos progressivos, triagem inicial de nivelamento, piano virtual controlado pelo teclado físico com síntese de áudio em tempo real, partituras dinâmicas, exercícios com validação imediata, glossário visual, área de prática livre (_Playground_), gamificação leve e assistente didático baseado em IA.
 
-- **Frontend:** aplicação TypeScript com Vite e TanStack Router, responsável pelas telas, interação, validações de experiência e consumo da API.
-- **Backend:** API Django modular, responsável por identidade, regras de domínio, persistência, auditoria e serviços de segurança.
+A solução adota uma arquitetura web desacoplada:
 
-## Funcionalidades mapeadas
+- **Frontend (`frontend/`):** Single Page Application (SPA) em React, TypeScript, Vite, TanStack Router, Tailwind CSS, Tone.js e VexFlow.
+- **Backend (`backend/`):** Monólito modular em Python, Django e Django REST Framework, com persistência em PostgreSQL, autenticação JWT/Google OAuth 2.0, envio de e-mails transacionais via Brevo SMTP e integração com Google Gemini API.
 
-| Área                 | Responsabilidade                                                              |
-| -------------------- | ----------------------------------------------------------------------------- |
-| Contas               | Cadastro, autenticação, recuperação de senha e gestão do perfil do usuário    |
-| Aprendizagem         | Trilhas, lições e conteúdos de aprendizagem                                   |
-| Exercícios e prática | Execução de atividades e recursos de prática musical                          |
-| Música               | Estruturas e regras do domínio musical                                        |
-| Glossário            | Consulta de termos e conceitos musicais                                       |
-| Triagem              | Identificação ou classificação inicial do usuário                             |
-| Progresso            | Acompanhamento da evolução do estudante                                       |
-| Gamificação          | Mecânicas de progresso, recompensas ou indicadores                            |
-| Auditoria            | Registro de eventos relevantes do sistema                                     |
-| Administração        | Gestão de conteúdo e de parâmetros do sistema                                 |
-| Assistente de IA     | Componente de interface e módulo `ai_gateway` reservado para integração de IA |
+---
 
-## Arquitetura
-
-```text
-Navegador
-    |
-    | HTTP(S) / JSON
-    v
-Frontend (TypeScript + Vite + TanStack Router)
-    |- rotas e páginas
-    |- componentes de interface
-    |- contexto de aplicação
-    |- recursos de áudio e música
-    |
-    v
-Backend (Django)
-    |- core: configurações, URLs e exceções
-    |- accounts: identidade, credenciais e recuperação de senha
-    |- módulos de domínio: learning, music, exercises, glossary,
-    |   placement, progress e gamification
-    |- audit: eventos e serviços de auditoria
-    |- ai_gateway: limite de integração com serviços de IA
-    |
-    v
-PostgreSQL
-```
-
-A divisão por aplicativos Django favorece separação de responsabilidades. O frontend adota roteamento baseado em arquivos, com páginas públicas, autenticadas e administrativas agrupadas em `src/routes`.
-
-## Estrutura de diretórios
+## Arquitetura e Estrutura de Diretórios
 
 ```text
 Linus/
-├── .github/workflows/        # Automação de testes do backend
+├── .github/workflows/
+│   └── testes-backend.yml    # Pipeline CI/CD (testes automatizados e cobertura)
 ├── backend/
-│   ├── core/                 # Configuração Django, URLs e exceções
-│   ├── accounts/             # Usuários, autenticação e segurança
-│   ├── audit/                # Auditoria e serviços de log
-│   ├── learning/             # Trilhas, lições e aprendizagem
-│   ├── music/                # Domínio musical
-│   ├── exercises/            # Exercícios
-│   ├── placement/            # Triagem
-│   ├── progress/             # Progresso
-│   ├── gamification/         # Gamificação
-│   ├── glossary/             # Glossário
-│   ├── ai_gateway/           # Integração de IA
-│   ├── requirements.txt      # Dependências Python
-│   └── manage.py             # CLI do Django
+│   ├── core/                 # Configurações globais, roteamento raiz (/api/v1/) e exceções
+│   ├── accounts/             # Usuários (RBAC), autenticação JWT/OAuth, 2FA, LGPD e e-mails
+│   ├── placement/            # Triagem inicial de nivelamento pedagógico
+│   ├── learning/             # Unidades (módulos) e lições (aulas) da trilha didática
+│   ├── exercises/            # Exercícios interativos e histórico de tentativas
+│   ├── progress/             # Acompanhamento de conclusão de aulas e taxas de acerto
+│   ├── gamification/         # Ofensiva diária (streaks), pontuação, badges e lembretes
+│   ├── glossary/             # Termos musicais, definições e diagramas vetoriais
+│   ├── music/                # Gravação de sequências musicais no Playground
+│   ├── ai_gateway/           # Integração protegida com a Google Gemini API
+│   ├── audit/                # Logs imutáveis de auditoria e eventos de segurança
+│   ├── common/               # Recursos compartilhados
+│   ├── docs/API.md           # Especificação dos endpoints REST
+│   ├── manage.py
+│   └── requirements.txt
+├── docs/                     # Documentação complementar de integrações e BPMN
 ├── frontend/
-│   ├── src/components/       # Componentes reutilizáveis e UI
-│   ├── src/context/          # Estado compartilhado
-│   ├── src/lib/              # Utilitários, áudio e regras auxiliares
-│   ├── src/routes/           # Rotas e páginas da aplicação
-│   ├── package.json          # Dependências e scripts Node.js
-│   └── vite.config.ts        # Configuração de build/desenvolvimento
-├── docker-compose.yml        # Orquestração local por Docker (PostgreSQL)
-└── README.md                 # Documentação principal
+│   ├── src/components/       # Componentes de domínio (Stave, VirtualPiano, AppShell, AiAssistant) e UI
+│   ├── src/context/          # Estado global e sincronização com a API (LinusContext)
+│   ├── src/data/             # Estruturas tipadas e currículo de fallback
+│   ├── src/lib/              # Síntese de áudio (Tone.js), teoria musical e utilitários
+│   ├── src/routes/           # Rotas da aplicação (TanStack Router)
+│   ├── package.json
+│   └── vite.config.ts
+├── docker-compose.yml        # Orquestração local do banco de dados PostgreSQL
+└── README.md
+
 ```
+
+---
 
 ## Pré-requisitos
 
-- Git
-- Python 3.12 ou versão compatível com as dependências do backend
-- Node.js LTS e npm
-- PostgreSQL
-- Docker e Docker Compose, caso opte por executar os serviços em contêineres
+- **Git**
+- **Python 3.14.***
+- **Node.js 24 (LTS)** e **npm**
+- **Docker** e **Docker Compose** (ou instância local do PostgreSQL 15+)
 
-## Configuração local
+---
 
-### 1. Obter o código
+## Configuração e Execução Local
+
+### 1. Clonar o repositório e configurar variáveis de ambiente
 
 ```bash
 git clone https://github.com/coragi-py/Linus.git
 cd Linus
-git checkout nome-da-branch
-```
+cp backend/.env.example backend/.env
 
-### 2. Configurar o backend
-
-```bash
-cd backend
-python -m venv .venv
-```
-
-Ative o ambiente virtual:
-
-```bash
-# Linux/macOS
-source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
-
-Instale as dependências:
-
-```bash
-pip install -r requirements.txt
-```
-
-Crie o arquivo de ambiente a partir do exemplo:
-
-```bash
-cp .env.example .env
 ```
 
 No Windows PowerShell:
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+
 ```
 
-Preencha as variáveis com credenciais **locais e não versionadas**. Consulte [`backend/README.md`](backend/README.md) para a descrição dos grupos de configuração.
+Preencha os valores locais no arquivo `backend/.env`.
 
-Execute as migrações e inicie a API:
+### 2. Iniciar o banco de dados PostgreSQL via Docker
 
 ```bash
-python manage.py migrate
-python manage.py runserver
+docker compose up -d
+
 ```
 
-### 3. Configurar o frontend
-
-Em outro terminal:
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-Use `npm install` apenas se a instalação reprodutível por `npm ci` não for adequada ao seu ambiente.
-
-A configuração anexada indica desenvolvimento local com frontend em `http://localhost:8080`; confirme a porta efetiva exibida pelo Vite e mantenha CORS e `FRONTEND_URL` coerentes.
-
-### 4. Docker Compose
-
-O repositório possui `docker-compose.yml`. Revise os serviços, portas, volumes e variáveis antes de iniciar, pois a configuração pode ser específica ao ambiente do projeto:
-
-```bash
-docker compose up --build
-```
-
-## Variáveis de ambiente
-
-Nunca versione o arquivo `.env`. O exemplo deve conter somente nomes de variáveis, valores fictícios e comentários. Em linhas gerais, o backend utiliza grupos para:
-
-| Grupo                | Finalidade                                                 |
-| -------------------- | ---------------------------------------------------------- |
-| Django               | Chave secreta, depuração e hosts autorizados               |
-| CORS e frontend      | Origens permitidas e URL pública do frontend               |
-| Banco de dados       | Driver, host, porta, base, usuário, senha e URL de conexão |
-| Integrações externas | Chaves de IA e OAuth                                       |
-| E-mail               | Servidor SMTP, porta, conta emissora e credencial SMTP     |
-
-Se uma chave, senha, token OAuth, credencial SMTP ou URL de banco com senha foi exposta fora do ambiente local, **revogue e gere novos valores** antes de qualquer publicação ou entrega.
-
-## Segurança e conformidade
-
-Módulo dedicado de contas, hasher customizado, serviço de segurança, recuperação por e-mail, módulo de auditoria e testes em diversos aplicativos.
-
-A validação cobre:
-
-- Algoritmo de hash, custo, salt e armazenamento de senhas.
-- Fluxo de login, expiração de sessão ou token, logout, 2FA e mitigação contra força bruta.
-- Geração, expiração, uso único e auditoria de tokens de recuperação de senha.
-- HTTPS/TLS em produção, redirecionamento HTTP → HTTPS e cabeçalhos de segurança.
-- Proteção de segredos, dados em repouso e chaves criptográficas.
-- Inventário de dados pessoais, finalidade, consentimento, revogação e direitos do titular conforme LGPD.
-- Integridade, retenção e análise dos logs de auditoria.
-
-Consulte os READMEs de backend e frontend para o inventário de evidências.
-
-## Qualidade e testes
-
-A árvore do projeto contém testes em `accounts`, `audit`, `glossary`, `music` e `placement`, além de workflow em `.github/workflows/testes-backend.yml`. Antes da entrega, execute ao menos:
+### 3. Configurar e iniciar o Backend (Porta 8000)
 
 ```bash
 cd backend
-python manage.py test
+python -m venv .venv
+
+# Ativar ambiente virtual (Linux/macOS)
+source .venv/bin/activate
+
+# Ativar ambiente virtual (Windows PowerShell)
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+
 ```
 
-Também valide fluxos críticos manualmente: registro, login, logout, recuperação de senha, permissões administrativas, consulta de dados pessoais, operação de trilhas/lições e tratamento de falhas.
+> Ao executar `python manage.py migrate`, o sistema cria todas as tabelas e executa automaticamente as *migrations* de carga inicial: 4 unidades didáticas, 8 lições com guia teórico e partitura demonstrativa, 32 exercícios interativos, 3 medalhas, 8 questões de triagem, 31 termos do glossário musical, 3 músicas públicas de amostra no Playground e 1.000 contas de estudantes com hashes e salts individualizados.
 
-## Documentação complementar
+### 4. Configurar e iniciar o Frontend (Porta 8080)
 
-- [`backend/README.md`](backend/README.md): arquitetura da API, módulos, endpoints, dependências e matriz de segurança.
-- [`frontend/README.md`](frontend/README.md): rotas, regras de negócio de interface, validações, controles de UX e segurança no cliente.
+Em um novo terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+
+```
+
+A aplicação estará disponível em `http://localhost:8080`.
+
+---
+
+## Testes e Qualidade
+
+Para executar a suíte de testes automatizados e verificar a cobertura de código do backend:
+
+```bash
+cd backend
+coverage run --omit="*/migrations/*,*/tests/*,manage.py" manage.py test accounts audit glossary music placement learning exercises gamification progress
+coverage report -m
+
+```
+
+Para validar a tipagem e o linter do frontend:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+
+```
+
+---
+
+## Documentação Complementar
+
+- [Documentação do Backend](backend/README.md): módulos Django, variáveis de ambiente, comandos administrativos, RBAC e conformidade LGPD.
+- [Documentação do Frontend](frontend/README.md): rotas, componentes musicais (`Stave`, `VirtualPiano`, `GlossaryDiagram`) e fluxo de estado.
+- [Referência da API REST](backend/docs/API.md): contratos de requisição e resposta de todos os endpoints `/api/v1/`.
+
+---
 
 ## Licença
 
-Consulte o arquivo [`LICENSE`](LICENSE) do repositório.
+Distribuído sob a licença definida no arquivo [`LICENSE`](LICENSE).
+
+## Autores e Orientação
+
+**Autores:**
+
+- Anny Gabriely Souza do Nascimento
+- Antonio Luiz Lins Neto
+- Fábio Yuuki Saruwataru
+
+**Orientação:**
+
+- **Orientador:** Prof. Leonardo Cavalcante Alvino
+- **Coorientador:** Prof. Alessandro da Silva Horas
+
+**Instituição:** Universidade de Mogi das Cruzes (UMC) — Bacharelado em Engenharia de Software (2026).

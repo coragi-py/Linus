@@ -1,9 +1,10 @@
+#Adicionando rota avatar, por Anny em 11/10.
 from django.urls import path
 from accounts.views import (
     RegisterView, LoginView, Verify2FAView,
     PasswordResetRequestView, PasswordResetConfirmView, LogoutView,
     GoogleAuthView, UserPrivacyDataView, RevokeConsentView, DeleteAccountView, UpdateProfileView, ChangePasswordView, 
-    AdminSystemMetricsView, AdminSystemUsersView
+    AdminSystemMetricsView, AdminSystemUsersView, UserProfileView
 )
 
 urlpatterns = [
@@ -23,6 +24,7 @@ urlpatterns = [
     # Endpoints de gestão de perfil
     path('profile/update/', UpdateProfileView.as_view(), name='profile-update'),
     path('password/change/', ChangePasswordView.as_view(), name='password-change'),
+    path('me/', UserProfileView.as_view(), name='user-profile'),
 
     # Endpoints Administrativos
     path('admin/metrics/', AdminSystemMetricsView.as_view(), name='admin-metrics'),

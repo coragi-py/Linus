@@ -9,10 +9,12 @@ import { User, Lock, ShieldAlert, EyeOff, Eye, Save, AlertTriangle, FileText } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLinus, type Role } from "@/context/LinusContext";
 import { blacklistNicknames } from "@/lib/blacklist";
-
+import { Avatar } from "@/components/Avatar"; 
 export const Route = createFileRoute("/perfil")({
   component: PerfilComponent,
 });
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Validação customizada contra palavras impróprias
 const validarNomeApropriado = (nome: string) => {
@@ -81,7 +83,7 @@ function PerfilComponent() {
     const fetchPrivacyData = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const response = await fetch("http://localhost:8000/api/v1/auth/privacy/data/", {
+        const response = await fetch(`${API_URL}/api/v1/auth/privacy/data/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -99,7 +101,7 @@ function PerfilComponent() {
   const onUpdateNome = async (data: NomeFormValues) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/profile/update/", {
+      const response = await fetch(`${API_URL}/api/v1/auth/profile/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +129,7 @@ function PerfilComponent() {
   const onChangePassword = async (data: SenhaFormValues) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/password/change/", {
+      const response = await fetch(`${API_URL}/api/v1/auth/password/change/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +159,7 @@ function PerfilComponent() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/privacy/revoke-consent/", {
+      const response = await fetch(`${API_URL}/api/v1/auth/privacy/revoke-consent/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -181,7 +183,7 @@ function PerfilComponent() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/v1/auth/privacy/delete-account/", {
+      const response = await fetch(`${API_URL}/api/v1/auth/privacy/delete-account/`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -223,14 +225,14 @@ function PerfilComponent() {
           </TabsList>
 
           {/* ABA 1: DADOS GERAIS */}
-          <TabsContent value="geral" className="space-y-6 max-w-md">
+          <TabsContent value="geral" className="space-y-6 max-w-3xl">
             <div>
               <h3 className="text-lg font-bold text-foreground">Informações Pessoais</h3>
               <p className="text-sm text-muted-foreground mb-6">
                 Atualize o nome como você quer ser chamado na plataforma.
               </p>
             </div>
-            <form onSubmit={handleNomeSubmit(onUpdateNome)} className="space-y-4">
+            <form onSubmit={handleNomeSubmit(onUpdateNome)} className="space-y-4 max-w-md">
               <div>
                 <label className="block text-xs font-semibold uppercase text-muted-foreground">
                   Nome de Exibição
@@ -256,6 +258,9 @@ function PerfilComponent() {
                 {isNomeSubmitting ? "Salvando..." : "Salvar Alterações"}
               </button>
             </form>
+            <div className="pt-6 mt-6 border-t border-border">
+              <Avatar />
+            </div>
           </TabsContent>
 
           {/* ABA 2: SEGURANÇA */}

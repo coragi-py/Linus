@@ -20,6 +20,12 @@ export type Lesson = {
   id: string;
   title: string;
   subtitle: string;
+  theory?: string;
+  partitura_dados?: {
+    clef?: "treble" | "bass";
+    notes?: string[];
+    caption?: string;
+  } | null;
   exercises: Exercise[];
 };
 
@@ -323,6 +329,6 @@ export function classifyPlacement(score: number): Placement {
 
 export const RECOMMENDED_UNIT: Record<Placement, string> = {
   Iniciante: "u1",
-  "Intermediário": "u2",
+  Intermediário: "u2",
   "Praticante Empírico": "u3",
 };

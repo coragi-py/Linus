@@ -1,3 +1,4 @@
+#Adicionando campo que lerá as opções do avatar, por Anny em 11/10
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
@@ -47,3 +48,9 @@ class GoogleAuthSerializer(serializers.Serializer):
     terms_accepted = serializers.BooleanField(required=True)
     terms_version = serializers.CharField(max_length=50, required=True, allow_blank=True)
     ano_nascimento = serializers.IntegerField(required=False, allow_null=True)
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'nome', 'email', 'ano_nascimento', 'avatar_options')
+        read_only_fields = ('id', 'email')

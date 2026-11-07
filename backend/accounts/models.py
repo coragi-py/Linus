@@ -1,3 +1,5 @@
+# Adicionando o campo de escolha de avatar, por Anny em 11/10.
+
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
@@ -8,7 +10,7 @@ def validar_nickname_apropriado(value):
     """
     Validador para bloquear palavras impróprias ou reservadas no nickname.
     """
-    # Lista de termos bloqueados (adicione os termos impróprios reais aqui)
+    # Lista de termos bloqueados
     blacklist = [
         'admin', 'administrador', 'root', 'suporte', 'linus', 'sistema',
         'palavrao1', 'palavrao2'
@@ -49,7 +51,7 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        USUARIO = 'usuario', 'Usuário'
+        USUARIO = 'estudante', 'Estudante'
         ADMIN_CONTEUDO = 'admin-conteudo', 'Admin Conteúdo'
         ADMIN_SISTEMA = 'admin-sistema', 'Admin Sistema'
 
@@ -65,6 +67,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     # Dados do Usuário
     ano_nascimento = models.IntegerField(null=True, blank=True)
+
+    # Avatar
+    avatar_options = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Configurações do avatar geradas pelo DiceBear no Front End"
+    )
     
     # RBAC (Role-Based Access Control)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.USUARIO)

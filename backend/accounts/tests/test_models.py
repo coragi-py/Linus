@@ -31,7 +31,7 @@ class CustomUserModelTests(TestCase):
         )
         self.assertEqual(user.email, 'aluno@teste.com')
         self.assertTrue(user.check_password('Password@123'))
-        self.assertEqual(user.role, 'usuario')
+        self.assertEqual(user.role, 'estudante')
         self.assertTrue(user.is_active)
         self.assertFalse(user.is_staff)
 

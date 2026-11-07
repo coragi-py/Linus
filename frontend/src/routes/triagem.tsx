@@ -10,6 +10,8 @@ import { Check } from "lucide-react";
 import axios from "axios";
 import Stave from "@/components/Stave";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export const Route = createFileRoute("/triagem")({
   component: Triagem,
 });
@@ -48,7 +50,7 @@ function Triagem() {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/api/v1/placement/questions/");
+        const response = await axios.get(`${API_URL}/api/v1/placement/questions/`);
         // Verifica se a API retornou os dados de forma paginada ou direta
         setQuestions(response.data.results || response.data);
       } catch (error) {
@@ -69,7 +71,7 @@ function Triagem() {
       setCurrentIndex(currentIndex + 1);
     } else {
       try {
-        const response = await axios.post("http://127.0.0.1:8000/api/v1/placement/submit/", {
+        const response = await axios.post(`${API_URL}/api/v1/placement/submit/`, {
           respostas: newAnswers,
         });
         setResult(response.data);
