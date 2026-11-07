@@ -195,15 +195,31 @@ EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
 
-# Testes
+#----------------------------------------------------------------------------
+# CACHE EM MEMÓRIA E SESSÃO TEMPORÁRIA DE TRIAGEM (TTL: 30 MINUTOS) 
+#----------------------------------------------------------------------------
+PLACEMENT_SESSION_TIMEOUT_MINUTES = 30 
+PLACEMENT_SESSION_TIMEOUT_SECONDS = PLACEMENT_SESSION_TIMEOUT_MINUTES * 60  # 1800s 
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "linus-cache",
+        "TIMEOUT": PLACEMENT_SESSION_TIMEOUT_SECONDS,  # 30 minutos (1800 segundos)
+    }
+}
+
+# -----------------------------------------------------------------------------
+# AMBIENTE DE TESTES
+# -----------------------------------------------------------------------------
 if 'test' in sys.argv:
-    # Mantém o SQLite em memória
+    # Mantém o SQLite em memória para testes rápidos
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
     }
     
-    # Desativa o Throttling e Rate Limiting substituindo o cache real por um cache fantasma
+    # Desativa o Throttling, Rate Limiting e expiração substituindo por um cache fantasma
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
