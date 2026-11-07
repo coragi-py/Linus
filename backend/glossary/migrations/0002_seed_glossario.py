@@ -1,17 +1,19 @@
 import sys
+
 from django.db import migrations
 
 
-TERMOS_GLOSSARIO_COMPLETO = [
-    # ================= PAUTAS, CLAVES E FÓRMULAS DE COMPASSO =================
+TERMOS_GLOSSARIO = [
+    # ================= PAUTA, CLAVES E COMPASSOS =================
     {
         "termo": "Pauta",
         "categoria": "Pautas",
         "figura_svg": "stave",
         "definicao": (
-            "Também chamada de Pentagrama, consiste no conjunto de 5 linhas horizontais paralelas e 4 espaços "
-            "equidistantes, sempre contados de baixo para cima. Funciona como um gráfico de alturas musicais: "
-            "quanto mais alto uma nota é grafada na pauta, mais agudo é o seu som."
+            "Também chamada de pentagrama, é o conjunto de cinco linhas horizontais "
+            "paralelas e quatro espaços, contados de baixo para cima. A posição de uma "
+            "nota na pauta indica sua altura: quanto mais alta ela é escrita, mais agudo "
+            "é o som representado."
         ),
     },
     {
@@ -19,9 +21,10 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Pautas",
         "figura_svg": "treble",
         "definicao": (
-            "Símbolo posicionado no início da pauta cuja espiral central envolve a 2ª linha, determinando que "
-            "qualquer nota escrita nessa linha é o Sol4 (acima do Dó central). É a clave padrão para registros "
-            "médios e agudos (mão direita do piano, violão, violino, flauta e voz)."
+            "Símbolo posicionado no início da pauta cuja espiral central envolve a "
+            "segunda linha. Essa linha passa a representar a nota Sol (G4). É a clave "
+            "mais utilizada para registros médios e agudos, como voz, violino, flauta, "
+            "violão e a mão direita do piano."
         ),
     },
     {
@@ -29,9 +32,10 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Pautas",
         "figura_svg": "bass",
         "definicao": (
-            "Clave utilizada para grafar sons médios e graves. Seus dois pontos envolvem a 4ª linha da pauta, "
-            "fixando nela a nota Fá3 (abaixo do Dó central). É indispensável para a leitura da mão esquerda do "
-            "piano, contrabaixo, violoncelo, fagote e trombone."
+            "Clave utilizada principalmente para registros médios e graves. Seus dois "
+            "pontos envolvem a quarta linha da pauta, que passa a representar a nota "
+            "Fá (F3). É comum na leitura da mão esquerda do piano, contrabaixo, "
+            "violoncelo, fagote e trombone."
         ),
     },
     {
@@ -39,8 +43,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Pautas",
         "figura_svg": "alto",
         "definicao": (
-            "Clave centrada exatamente na 3ª linha da pauta, atribuindo a essa linha central a nota Dó4 (Dó Central). "
-            "Permite escrever notas da região média sem excesso de linhas suplementares, sendo a clave padrão da viola de arco."
+            "Variação da clave de dó posicionada na terceira linha da pauta. Ela "
+            "determina que essa linha representa o dó central (C4). É utilizada "
+            "principalmente pela viola de arco."
         ),
     },
     {
@@ -48,8 +53,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Pautas",
         "figura_svg": "tenor",
         "definicao": (
-            "Variação da Clave de Dó posicionada na 4ª linha da pauta, determinando que a 4ª linha corresponde ao "
-            "Dó Central (C4). É amplamente empregada para passagens agudas do violoncelo, fagote e trombone tenor."
+            "Variação da clave de dó posicionada na quarta linha da pauta. Ela determina "
+            "que essa linha representa o dó central (C4). É utilizada em passagens mais "
+            "agudas de instrumentos como violoncelo, fagote e trombone."
         ),
     },
     {
@@ -57,73 +63,81 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Pautas",
         "figura_svg": "percussion",
         "definicao": (
-            "Também chamada de clave neutra, é utilizada para instrumentos rítmicos de altura indefinida (como bateria, "
-            "caixa e percussão). Nela, cada linha ou espaço não indica uma nota afinada, mas sim uma peça diferente do kit percussivo."
+            "Também chamada de clave neutra, é utilizada para instrumentos de percussão "
+            "de altura indefinida, como bateria e caixa. Nela, linhas e espaços podem "
+            "representar diferentes peças do instrumento, em vez de alturas específicas."
         ),
     },
     {
         "termo": "Compasso 4/4",
         "categoria": "Pautas",
-        "figura_svg": "time-4/4",
+        "figura_svg": "time-4-4",
         "definicao": (
-            "Fórmula de compasso quaternário simples — a mais frequente na música ocidental. O numerador (4) indica "
-            "que cabem 4 pulsos por compasso, enquanto o denominador (4) define a Semínima como unidade de tempo (1 pulso)."
+            "Fórmula de compasso quaternário simples, muito comum na música ocidental. "
+            "O número superior indica que cada compasso possui quatro tempos; o número "
+            "inferior indica que a semínima corresponde à unidade de tempo."
         ),
     },
     {
         "termo": "Compasso 3/4",
         "categoria": "Pautas",
-        "figura_svg": "time-3/4",
+        "figura_svg": "time-3-4",
         "definicao": (
-            "Fórmula de compasso ternário simples, característica das valsas, minuetos e guarânias. Organiza o pulso "
-            "em ciclos de 3 tempos (Forte – fraco – fraco), tendo a Semínima como figura equivalente a 1 tempo."
+            "Fórmula de compasso ternário simples, com três tempos por compasso. "
+            "A semínima corresponde à unidade de tempo. É frequente em valsas, "
+            "minuetos e guarânias."
         ),
     },
     {
         "termo": "Compasso 2/4",
         "categoria": "Pautas",
-        "figura_svg": "time-2/4",
+        "figura_svg": "time-2-4",
         "definicao": (
-            "Fórmula de compasso binário simples, formada por 2 tempos de Semínima por compasso (Forte – fraco). "
-            "É a estrutura rítmica base de gêneros brasileiros como o samba, o choro, a marcha, o frevo e o baião."
+            "Fórmula de compasso binário simples, com dois tempos por compasso. "
+            "A semínima corresponde à unidade de tempo. É comum em gêneros como samba, "
+            "choro, marcha, frevo e baião."
         ),
     },
     {
         "termo": "Compasso 6/8",
         "categoria": "Pautas",
-        "figura_svg": "time-6/8",
+        "figura_svg": "time-6-8",
         "definicao": (
-            "Compasso binário composto que agrupa 6 colcheias por compasso divididas em 2 pulsos principais ternários "
-            "(cada pulso equivale a uma semínima pontuada, subdividida em 3 colcheias). Comum em baladas, blues lento e giga."
+            "Fórmula de compasso binário composto, formada por seis colcheias por "
+            "compasso. Essas colcheias costumam ser agrupadas em dois pulsos maiores, "
+            "cada um equivalente a uma semínima pontuada. É comum em baladas, blues "
+            "lentos e gigas."
         ),
     },
     {
-        "termo": "Tempo Comum (C)",
+        "termo": "Tempo Comum",
         "categoria": "Pautas",
         "figura_svg": "time-c",
         "definicao": (
-            "Símbolo tradicional que substitui e equivale exatamente à fórmula de compasso 4/4 (quaternário simples). "
-            "Tem origem na notação mensural renascentista, em que o semicírculo representava a divisão 'imperfeita' (binária/quaternária)."
+            "Símbolo tradicional, representado por um C, que equivale à fórmula de "
+            "compasso 4/4. Indica um compasso quaternário simples, com quatro tempos "
+            "por compasso e a semínima como unidade de tempo."
         ),
     },
     {
-        "termo": "Tempo Cortado (C|)",
+        "termo": "Tempo Cortado",
         "categoria": "Pautas",
         "figura_svg": "time-cut",
         "definicao": (
-            "Conhecido pelo termo italiano 'Alla breve', equivale à fórmula 2/2. Embora possua a mesma soma de figuras "
-            "do 4/4, é sentido em 2 pulsos rápidos em que a Mínima passa a valer 1 tempo inteiro."
+            "Símbolo tradicional, representado por um C cortado por uma linha vertical, "
+            "que equivale à fórmula de compasso 2/2. Também chamado de alla breve, "
+            "organiza o compasso em dois tempos, com a mínima como unidade de tempo."
         ),
     },
 
-    # ================= FIGURAS DE DURAÇÃO (NOTAS E PAUSAS) =================
+    # ================= FIGURAS, NOTAS E PAUSAS =================
     {
         "termo": "Semibreve",
         "categoria": "Figuras",
         "figura_svg": "whole",
         "definicao": (
-            "Figura musical de referência (unidade inteira = 1/1) representada por uma cabeça oval aberta sem haste. "
-            "No compasso 4/4, dura 4 tempos completos, preenchendo sozinha um compasso inteiro."
+            "Figura musical representada por uma cabeça oval aberta, sem haste. "
+            "No compasso 4/4, dura quatro tempos e pode preencher um compasso inteiro."
         ),
     },
     {
@@ -131,8 +145,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "half",
         "definicao": (
-            "Figura representada por uma cabeça oval aberta com haste vertical, equivalente à metade da semibreve (1/2). "
-            "No compasso 4/4, sustenta o som por 2 tempos completos (duas mínimas preenchem um compasso 4/4)."
+            "Figura musical representada por uma cabeça oval aberta com haste. "
+            "No compasso 4/4, dura dois tempos, ou seja, metade da duração de uma semibreve."
         ),
     },
     {
@@ -140,8 +154,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "quarter",
         "definicao": (
-            "Figura com cabeça oval preenchida e haste vertical, correspondente a 1/4 da semibreve. "
-            "Nos compassos de denominador 4 (2/4, 3/4, 4/4), vale exatamente 1 tempo, funcionando como o pulso do metrônomo."
+            "Figura musical representada por uma cabeça preenchida com haste. "
+            "Em compassos como 2/4, 3/4 e 4/4, corresponde à unidade de tempo e dura "
+            "um tempo."
         ),
     },
     {
@@ -149,8 +164,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "eighth",
         "definicao": (
-            "Figura com cabeça preenchida, haste e 1 colchete (ou barra de ligação), equivalente a 1/8 da semibreve. "
-            "No compasso 4/4, vale meio tempo (0,5), dividindo cada batida do metrônomo em duas partes iguais."
+            "Figura musical representada por uma cabeça preenchida, haste e um colchete "
+            "ou barra de ligação. No compasso 4/4, dura meio tempo; duas colcheias "
+            "correspondem a uma semínima."
         ),
     },
     {
@@ -158,8 +174,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "sixteenth",
         "definicao": (
-            "Figura com cabeça preenchida, haste e 2 colchetes, equivalente a 1/16 da semibreve. "
-            "No compasso 4/4, dura 1/4 de tempo (0,25), permitindo tocar 4 notas rápidas dentro de uma única batida."
+            "Figura musical representada por uma cabeça preenchida, haste e dois "
+            "colchetes ou barras de ligação. No compasso 4/4, dura um quarto de tempo; "
+            "quatro semicolcheias correspondem a uma semínima."
         ),
     },
     {
@@ -167,8 +184,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "thirtysecond",
         "definicao": (
-            "Figura de execução muito rápida com 3 colchetes na haste, equivalente a 1/32 da semibreve. "
-            "Em um compasso 4/4, vale 1/8 de tempo, subdividindo um único pulso de semínima em 8 notas."
+            "Figura musical representada por uma cabeça preenchida, haste e três "
+            "colchetes ou barras de ligação. No compasso 4/4, dura um oitavo de tempo; "
+            "oito fusas correspondem a uma semínima."
         ),
     },
     {
@@ -176,8 +194,9 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "sixtyfourth",
         "definicao": (
-            "Figura com 4 colchetes na haste, correspondente a 1/64 da semibreve. "
-            "No compasso 4/4, vale 1/16 de tempo (16 notas em um único pulso), aparecendo sobretudo em ornamentos e passagens virtuosísticas."
+            "Figura musical representada por uma cabeça preenchida, haste e quatro "
+            "colchetes ou barras de ligação. No compasso 4/4, dura um dezesseis avos "
+            "de tempo; dezesseis semifusas correspondem a uma semínima."
         ),
     },
     {
@@ -185,8 +204,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "whole-rest",
         "definicao": (
-            "Símbolo retangular grafado 'pendurado' logo abaixo da 4ª linha da pauta. "
-            "Indica silêncio absoluto de 4 tempos no compasso 4/4 (ou a pausa de um compasso inteiro em qualquer métrica)."
+            "Símbolo de silêncio equivalente à duração de uma semibreve. No compasso "
+            "4/4, representa quatro tempos de silêncio e pode indicar um compasso inteiro."
         ),
     },
     {
@@ -194,8 +213,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "half-rest",
         "definicao": (
-            "Símbolo retangular apoiado sobre a 3ª linha da pauta (semelhante a um chapéu). "
-            "Determina uma interrupção sonora de 2 tempos no compasso 4/4, equivalente à duração da figura Mínima."
+            "Símbolo de silêncio equivalente à duração de uma mínima. No compasso 4/4, "
+            "representa dois tempos de silêncio."
         ),
     },
     {
@@ -203,8 +222,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "quarter-rest",
         "definicao": (
-            "Símbolo sinuoso colocado no centro da pauta que indica 1 tempo inteiro de silêncio nos compassos "
-            "de denominador 4 (2/4, 3/4 e 4/4), possuindo o mesmo valor temporal da Semínima."
+            "Símbolo de silêncio equivalente à duração de uma semínima. Em compassos "
+            "como 2/4, 3/4 e 4/4, representa um tempo de silêncio."
         ),
     },
     {
@@ -212,8 +231,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "eighth-rest",
         "definicao": (
-            "Símbolo com uma haste inclinada e 1 gancho voltado para a esquerda. "
-            "Representa meio tempo (1/2) de silêncio no compasso 4/4, sendo muito usado em contratempos e síncopes."
+            "Símbolo de silêncio equivalente à duração de uma colcheia. No compasso 4/4, "
+            "representa meio tempo de silêncio."
         ),
     },
     {
@@ -221,8 +240,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "sixteenth-rest",
         "definicao": (
-            "Símbolo com haste inclinada e 2 ganchos, equivalente ao silêncio de uma Semicolcheia (1/4 de tempo em 4/4). "
-            "Essencial para criar articulações rítmicas precisas em levadas de funk, choro e música de câmara."
+            "Símbolo de silêncio equivalente à duração de uma semicolcheia. No compasso "
+            "4/4, representa um quarto de tempo de silêncio."
         ),
     },
     {
@@ -230,8 +249,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "thirtysecond-rest",
         "definicao": (
-            "Símbolo com 3 ganchos que indica silêncio de 1/8 de tempo no compasso 4/4, "
-            "correspondendo exatamente à duração da figura Fusa."
+            "Símbolo de silêncio equivalente à duração de uma fusa. No compasso 4/4, "
+            "representa um oitavo de tempo de silêncio."
         ),
     },
     {
@@ -239,19 +258,31 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Figuras",
         "figura_svg": "sixtyfourth-rest",
         "definicao": (
-            "Símbolo com 4 ganchos que indica uma brevíssima pausa de 1/16 de tempo no compasso 4/4, "
-            "equivalente à duração da figura Semifusa."
+            "Símbolo de silêncio equivalente à duração de uma semifusa. No compasso 4/4, "
+            "representa um dezesseis avos de tempo de silêncio."
         ),
     },
 
-    # ================= ACIDENTES MUSICAIS =================
+    # ================= ALTURA, INTERVALOS E ESCALAS =================
+    {
+        "termo": "Modo Grego",
+        "categoria": "Teoria Musical",
+        "figura_svg": "modes",
+        "definicao": (
+            "Escala derivada da reorganização dos graus de uma escala maior, com uma "
+            "nota diferente funcionando como tônica. Os sete modos são jônio, dórico, "
+            "frígio, lídio, mixolídio, eólio e lócrio."
+        ),
+    },
+
+    # ================= ACIDENTES =================
     {
         "termo": "Sustenido",
         "categoria": "Acidentes",
         "figura_svg": "sharp",
         "definicao": (
-            "Acidente musical (#) grafado à esquerda da cabeça da nota que eleva sua afinação em 1 semitom (meio tom). "
-            "No piano, tocar o sustenido de uma nota equivale a avançar uma tecla imediatamente para a direita."
+            "Acidente musical, representado por #, que eleva a altura de uma nota em um "
+            "semitom. É escrito antes da nota que deve ser alterada."
         ),
     },
     {
@@ -259,8 +290,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Acidentes",
         "figura_svg": "flat",
         "definicao": (
-            "Acidente musical (b) grafado à esquerda da cabeça da nota que abaixa sua afinação em 1 semitom (meio tom). "
-            "No piano, tocar o bemol de uma nota equivale a recuar uma tecla imediatamente para a esquerda."
+            "Acidente musical, representado por b, que abaixa a altura de uma nota em um "
+            "semitom. É escrito antes da nota que deve ser alterada."
         ),
     },
     {
@@ -268,26 +299,8 @@ TERMOS_GLOSSARIO_COMPLETO = [
         "categoria": "Acidentes",
         "figura_svg": "natural",
         "definicao": (
-            "Acidente de cancelamento que anula o efeito de qualquer sustenido ou bemol anterior (seja da armadura de clave "
-            "ou de uma alteração ocorrente no mesmo compasso), restituindo a nota ao seu estado natural (tecla branca no piano)."
-        ),
-    },
-    {
-        "termo": "Dobrado Sustenido",
-        "categoria": "Acidentes",
-        "figura_svg": "doublesharp",
-        "definicao": (
-            "Acidente (x ou ##) que eleva a altura da nota natural em 2 semitons (1 tom inteiro). "
-            "É utilizado para preservar a escrita correta dos graus em tonalidades que já possuem muitos sustenidos na armadura."
-        ),
-    },
-    {
-        "termo": "Dobrado Bemol",
-        "categoria": "Acidentes",
-        "figura_svg": "doubleflat",
-        "definicao": (
-            "Acidente (bb) que abaixa a altura da nota natural em 2 semitons (1 tom inteiro). "
-            "Aparece frequentemente em acordes diminutos e tonalidades menores com muitos bemóis na armadura de clave."
+            "Acidente musical que cancela o efeito de um sustenido ou bemol anterior, "
+            "restaurando a nota ao seu estado natural."
         ),
     },
 ]
@@ -299,7 +312,7 @@ def seed_glossario(apps, schema_editor):
 
     Glossario = apps.get_model("glossary", "Glossario")
 
-    for item in TERMOS_GLOSSARIO_COMPLETO:
+    for item in TERMOS_GLOSSARIO:
         Glossario.objects.update_or_create(
             termo=item["termo"],
             defaults={
@@ -312,8 +325,9 @@ def seed_glossario(apps, schema_editor):
 
 def reverse_seed_glossario(apps, schema_editor):
     Glossario = apps.get_model("glossary", "Glossario")
-    nomes = [item["termo"] for item in TERMOS_GLOSSARIO_COMPLETO]
-    Glossario.objects.filter(termo__in=nomes).delete()
+
+    termos = [item["termo"] for item in TERMOS_GLOSSARIO]
+    Glossario.objects.filter(termo__in=termos).delete()
 
 
 class Migration(migrations.Migration):
