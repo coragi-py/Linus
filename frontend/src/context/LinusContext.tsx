@@ -42,7 +42,7 @@ export type LinusState = {
 };
 
 const STORAGE_KEY = "linus.state.v1";
-const API_BASE = "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const EMPTY_TOPICS: Record<string, { erros: number; total: number }> = {
   "Leitura de Partituras": { erros: 0, total: 0 },
@@ -161,7 +161,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
   // 3. Busca módulos, aulas e exercícios reais do backend
   const refreshCurriculum = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/learning/modulos/`);
+      const res = await fetch(`${API_URL}/learning/modulos/`);
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -205,7 +205,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
     if (!token) return;
     try {
       const tokenAuth = getAuthFromToken();
-      const res = await fetch(`${API_BASE}/learning/progresso/`, {
+      const res = await fetch(`${API_URL}/learning/progresso/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -299,7 +299,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
           const refreshToken = localStorage.getItem("refresh_token");
 
           if (accessToken && refreshToken) {
-            await fetch(`${API_BASE}/auth/logout/`, {
+            await fetch(`${API_URL}/auth/logout/`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -335,7 +335,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
 
         const token = localStorage.getItem("access_token");
         if (token) {
-          void fetch(`${API_BASE}/learning/aulas/${lessonId}/concluir/`, {
+          void fetch(`${API_URL}/learning/aulas/${lessonId}/concluir/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -375,7 +375,7 @@ export function LinusProvider({ children }: { children: ReactNode }) {
 
         const token = localStorage.getItem("access_token");
         if (token && meta?.exercicioId) {
-          void fetch(`${API_BASE}/learning/tentativas/`, {
+          void fetch(`${API_URL}/learning/tentativas/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

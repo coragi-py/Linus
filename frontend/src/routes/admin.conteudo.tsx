@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin/conteudo")({
   component: AdminConteudoPage,
 });
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 axios.interceptors.request.use(
   (config) => {
@@ -155,10 +155,10 @@ export default function AdminConteudoPage() {
   const fetchData = async () => {
     try {
       const [resMod, resAul, resTri, resGlo] = await Promise.allSettled([
-        axios.get(`${API_BASE}/learning/modulos/`),
-        axios.get(`${API_BASE}/learning/aulas/`),
-        axios.get(`${API_BASE}/placement/admin/questoes/`),
-        axios.get(`${API_BASE}/glossary/termos/`),
+        axios.get(`${API_URL}/learning/modulos/`),
+        axios.get(`${API_URL}/learning/aulas/`),
+        axios.get(`${API_URL}/placement/admin/questoes/`),
+        axios.get(`${API_URL}/glossary/termos/`),
       ]);
 
       if (resMod.status === "fulfilled") {
@@ -259,10 +259,10 @@ export default function AdminConteudoPage() {
     e.preventDefault();
     try {
       if (editingModuloId) {
-        await axios.put(`${API_BASE}/learning/modulos/${editingModuloId}/`, moduloForm);
+        await axios.put(`${API_URL}/learning/modulos/${editingModuloId}/`, moduloForm);
         toast.success("Unidade atualizada com sucesso!");
       } else {
-        await axios.post(`${API_BASE}/learning/modulos/`, moduloForm);
+        await axios.post(`${API_URL}/learning/modulos/`, moduloForm);
         toast.success("Nova unidade cadastrada!");
       }
       resetModuloForm();
@@ -274,7 +274,7 @@ export default function AdminConteudoPage() {
 
   const handleToggleAtivoModulo = async (m: any) => {
     try {
-      await axios.patch(`${API_BASE}/learning/modulos/${m.id}/`, { ativo: !m.ativo });
+      await axios.patch(`${API_URL}/learning/modulos/${m.id}/`, { ativo: !m.ativo });
       toast.success(`Unidade ${!m.ativo ? "ativada" : "inativada"}.`);
       void fetchData();
     } catch {
@@ -285,7 +285,7 @@ export default function AdminConteudoPage() {
   const handleExcluirModulo = async (id: string) => {
     if (!confirm("Excluir esta unidade apagará as lições vinculadas. Confirmar?")) return;
     try {
-      await axios.delete(`${API_BASE}/learning/modulos/${id}/`);
+      await axios.delete(`${API_URL}/learning/modulos/${id}/`);
       if (editingModuloId === id) resetModuloForm();
       toast.success("Unidade removida.");
       void fetchData();
@@ -322,10 +322,10 @@ export default function AdminConteudoPage() {
     e.preventDefault();
     try {
       if (editingAulaId) {
-        await axios.put(`${API_BASE}/learning/aulas/${editingAulaId}/`, aulaForm);
+        await axios.put(`${API_URL}/learning/aulas/${editingAulaId}/`, aulaForm);
         toast.success("Lição atualizada com sucesso!");
       } else {
-        await axios.post(`${API_BASE}/learning/aulas/`, aulaForm);
+        await axios.post(`${API_URL}/learning/aulas/`, aulaForm);
         toast.success("Nova lição cadastrada!");
       }
       resetAulaForm();
@@ -338,7 +338,7 @@ export default function AdminConteudoPage() {
   const handleExcluirAula = async (id: string) => {
     if (!confirm("Confirmar exclusão desta lição e de seus exercícios?")) return;
     try {
-      await axios.delete(`${API_BASE}/learning/aulas/${id}/`);
+      await axios.delete(`${API_URL}/learning/aulas/${id}/`);
       if (editingAulaId === id) resetAulaForm();
       toast.success("Lição excluída.");
       void fetchData();
@@ -387,7 +387,7 @@ export default function AdminConteudoPage() {
     }
 
     try {
-      await axios.post(`${API_BASE}/learning/exercicios/`, {
+      await axios.post(`${API_URL}/learning/exercicios/`, {
         aula: aula.id,
         tipo: exercicioForm.tipo,
         enunciado: exercicioForm.enunciado,
@@ -412,7 +412,7 @@ export default function AdminConteudoPage() {
   const handleExcluirExercicio = async (exercicioId: string) => {
     if (!confirm("Remover este exercício da lição?")) return;
     try {
-      await axios.delete(`${API_BASE}/learning/exercicios/${exercicioId}/`);
+      await axios.delete(`${API_URL}/learning/exercicios/${exercicioId}/`);
       toast.success("Exercício removido.");
       void fetchData();
     } catch {
@@ -530,10 +530,10 @@ export default function AdminConteudoPage() {
 
     try {
       if (editingPerguntaId) {
-        await axios.put(`${API_BASE}/placement/admin/questoes/${editingPerguntaId}/`, payload);
+        await axios.put(`${API_URL}/placement/admin/questoes/${editingPerguntaId}/`, payload);
         toast.success("Questão de triagem atualizada!");
       } else {
-        await axios.post(`${API_BASE}/placement/admin/questoes/`, payload);
+        await axios.post(`${API_URL}/placement/admin/questoes/`, payload);
         toast.success("Nova questão adicionada à triagem!");
       }
       resetPerguntaForm();
@@ -545,7 +545,7 @@ export default function AdminConteudoPage() {
 
   const handleToggleAtivoPergunta = async (p: any) => {
     try {
-      await axios.patch(`${API_BASE}/placement/admin/questoes/${p.id}/`, { ativo: !p.ativo });
+      await axios.patch(`${API_URL}/placement/admin/questoes/${p.id}/`, { ativo: !p.ativo });
       toast.success(`Questão ${!p.ativo ? "ativada" : "inativada"}.`);
       void fetchData();
     } catch {
@@ -556,7 +556,7 @@ export default function AdminConteudoPage() {
   const handleExcluirPergunta = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta questão e suas alternativas?")) return;
     try {
-      await axios.delete(`${API_BASE}/placement/admin/questoes/${id}/`);
+      await axios.delete(`${API_URL}/placement/admin/questoes/${id}/`);
       if (editingPerguntaId === id) resetPerguntaForm();
       toast.success("Questão excluída.");
       void fetchData();
@@ -598,10 +598,10 @@ export default function AdminConteudoPage() {
       };
 
       if (editingTermoId) {
-        await axios.put(`${API_BASE}/glossary/termos/${editingTermoId}/`, payload);
+        await axios.put(`${API_URL}/glossary/termos/${editingTermoId}/`, payload);
         toast.success("Verbete atualizado no glossário!");
       } else {
-        await axios.post(`${API_BASE}/glossary/termos/`, payload);
+        await axios.post(`${API_URL}/glossary/termos/`, payload);
         toast.success("Novo verbete salvo no glossário!");
       }
 
@@ -615,7 +615,7 @@ export default function AdminConteudoPage() {
   const handleExcluirTermo = async (id: string) => {
     if (!confirm("Confirmar exclusão deste termo do glossário?")) return;
     try {
-      await axios.delete(`${API_BASE}/glossary/termos/${id}/`);
+      await axios.delete(`${API_URL}/glossary/termos/${id}/`);
       if (editingTermoId === id) resetTermoForm();
       toast.success("Verbete excluído.");
       void fetchData();

@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 type Msg = { from: "linus" | "aluno"; text: string };
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 const SUGESTOES = [
   "O que é uma pauta?",
   "Para que serve a clave de Sol?",
@@ -35,7 +37,7 @@ export function AiAssistant({
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/ai/chat/", {
+      const response = await fetch(`${API_URL}/api/v1/ai/chat/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
