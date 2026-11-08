@@ -185,15 +185,18 @@ SIMPLE_JWT = {
 }
 
 # -----------------------------------------------------------------------------
-# COMUNICAÇÃO SEGURA (BREVO SMTP)
+# Envio de e-mail (BREVO HTTPS)
 # -----------------------------------------------------------------------------
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.environ.get("BREVO_SMTP_HOST", "smtp-relay.brevo.com")
-EMAIL_PORT = int(os.environ.get("BREVO_SMTP_PORT") or 587)
-EMAIL_HOST_USER = os.environ.get("BREVO_SMTP_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+ANYMAIL = {
+    "BREVO_API_KEY": os.environ.get("BREVO_API_KEY", ""),
+}
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "nao-responda@linus.app.br",
+)
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 
 #----------------------------------------------------------------------------
 # CACHE EM MEMÓRIA E SESSÃO TEMPORÁRIA DE TRIAGEM (TTL: 30 MINUTOS) 
