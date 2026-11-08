@@ -189,7 +189,7 @@ SIMPLE_JWT = {
 # -----------------------------------------------------------------------------
 EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
 ANYMAIL = {
-    "BREVO_API_KEY": os.environ.get["BREVO_API_KEY"],
+    BREVO_API_KEY: os.environ.get["BREVO_API_KEY"],
 }
 
 DEFAULT_FROM_EMAIL = os.environ.get(
