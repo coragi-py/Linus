@@ -389,5 +389,12 @@ class DispararLembretesStreakView(APIView):
     permission_classes = [IsAdminConteudoOrReadOnly]
 
     def post(self, request):
-        resultado = StreakNotificationService.notificar_usuarios_em_risco(request=request)
+        validar_horario = (
+            str(request.query_params.get("scheduled", "")).lower() == "true"
+            or bool(request.data.get("validar_horario", False))
+        )
+        resultado = StreakNotificationService.notificar_usuarios_em_risco(
+            request=request,
+            validar_horario=validar_horario,
+        )
         return Response(resultado, status=status.HTTP_200_OK)
