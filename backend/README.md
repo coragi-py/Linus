@@ -26,35 +26,50 @@ O pacote `core` centraliza as configurações (`settings.py`), o roteamento raiz
 Crie o arquivo `backend/.env` a partir de `backend/.env.example`:
 
 ```dotenv
-# Django
-DJANGO_SECRET_KEY=chave-secreta-aleatoria
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+# ==============================================================================
+# 1. DJANGO CORE & SEGURANÇA
+# ==============================================================================
+DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+DJANGO_DEBUG=${DJANGO_DEBUG}
+BACKEND_HOST=${BACKEND_HOST}
+DJANGO_ALLOWED_HOSTS=${BACKEND_HOST},localhost,127.0.0.1
 
-# Frontend e CORS
-CORS_ALLOWED_ORIGINS=http://localhost:8080
-FRONTEND_URL=http://localhost:8080
+# ==============================================================================
+# 2. FRONTEND & CORS (Interpolados dinamicamente)
+# ==============================================================================
+FRONTEND_PROTOCOL=${FRONTEND_PROTOCOL}
+FRONTEND_HOST=${FRONTEND_HOST}
+FRONTEND_PORT=${FRONTEND_PORT}
+FRONTEND_URL=${FRONTEND_PROTOCOL}://${FRONTEND_HOST}:${FRONTEND_PORT}
+CORS_ALLOWED_ORIGINS=${FRONTEND_URL}
+CSRF_TRUSTED_ORIGINS=${FRONTEND_URL}
 
-# Banco de Dados PostgreSQL
-DB_ENGINE=django.db.backends.postgresql
-DB_HOST=localhost
-DB_PORT=5432
-POSTGRES_DB=linus_db
-POSTGRES_USER=linus_db_user
-POSTGRES_PASSWORD=senha_local
-DATABASE_URL=postgres://linus_db_user:senha_local@localhost:5432/linus_db
+# ==============================================================================
+# 3. BANCO DE DADOS POSTGRESQL (Usado pelo Docker e dj-database-url)
+# ==============================================================================
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+POSTGRES_DB=${POSTGRES_DB}
+POSTGRES_USER=${POSTGRES_USER}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${POSTGRES_DB}
 
-# Integrações Externas
-GEMINI_API_KEY=
-GOOGLE_OAUTH2_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET_KEY=
+# ==============================================================================
+# 4. INTEGRAÇÕES EXTERNAS (GOOGLE OAUTH 2.0 & GEMINI API)
+# ==============================================================================
+GEMINI_API_KEY=${GEMINI_API_KEY}
+GOOGLE_OAUTH2_CLIENT_ID=${GOOGLE_OAUTH2_CLIENT_ID}
+GOOGLE_OAUTH_CLIENT_SECRET_KEY=${GOOGLE_OAUTH_CLIENT_SECRET_KEY}
 
-# Mensageria Transacional (Brevo SMTP)
-BREVO_SMTP_HOST=smtp-relay.brevo.com
-BREVO_SMTP_PORT=587
-BREVO_SMTP_USER=
-BREVO_SMTP_PASSWORD=
-DEFAULT_FROM_EMAIL=noreply@linus.app.br
+# ==============================================================================
+# 5. SERVIÇO DE E-MAIL TRANSACIONAL (SMTP)
+# ==============================================================================
+BREVO_SMTP_HOST=${BREVO_SMTP_HOST}
+BREVO_SMTP_PORT=${BREVO_SMTP_PORT}
+BREVO_SMTP_USER=${BREVO_SMTP_USER}
+BREVO_SMTP_PASSWORD=${BREVO_SMTP_PASSWORD}
+DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+BREVO_API_KEY=${BREVO_API_KEY}
 
 ```
 
@@ -123,7 +138,7 @@ O modelo `CustomUser` (`TB_USUARIO`) define três papéis no sistema:
 Todos os módulos de domínio contam com testes automatizados integrados ao pipeline `.github/workflows/testes-backend.yml`:
 
 ```bash
-coverage run --omit="*/migrations/*,*/tests/*,manage.py" manage.py test accounts audit glossary music placement learning exercises gamification progress
+coverage run manage.py test
 coverage report -m --fail-under=70
 
 ```
