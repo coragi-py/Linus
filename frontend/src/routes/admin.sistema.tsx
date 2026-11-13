@@ -6,14 +6,12 @@ import {
   Activity,
   BookOpen,
   CheckCircle2,
-  AlertTriangle,
   Search,
   Filter,
   ChevronLeft,
   ChevronRight,
   Lock,
   Layers,
-  Calendar,
   RotateCcw,
   SlidersHorizontal,
   FileSearch,
@@ -51,7 +49,6 @@ type AuditLogItem = {
   ip_address: string;
   timestamp: string;
   data_iso?: string;
-  payload?: Record<string, any>;
 };
 
 const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
@@ -67,6 +64,9 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 const ITEMS_PER_PAGE = 25;
 const AUDIT_ITEMS_PER_PAGE = 20;
+
+const DATE_INPUT_CLASS =
+  "block h-10 w-full min-w-[140px] rounded-md border border-input bg-background px-3 py-2 text-xs font-medium text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 // Extrai YYYY-MM-DD mesmo se data_iso não vier preenchido do backend
 function extractIsoDate(dataIso?: string, timestampStr?: string): string {
@@ -125,9 +125,6 @@ function AdminSistema() {
 
   // ================= ESTADOS: ABA DE AUDITORIA =================
   const [auditUsuarioBusca, setAuditUsuarioBusca] = useState("");
-  const [auditTipoUsuario, setAuditTipoUsuario] = useState<"todos" | "autenticados" | "anonimos">(
-    "todos",
-  );
   const [auditAcaoFiltro, setAuditAcaoFiltro] = useState("todas");
   const [auditDataInicio, setAuditDataInicio] = useState("");
   const [auditDataFim, setAuditDataFim] = useState("");
@@ -178,7 +175,7 @@ function AdminSistema() {
   // Reseta página de auditoria ao mudar filtros
   useEffect(() => {
     setPaginaAuditoria(1);
-  }, [auditUsuarioBusca, auditTipoUsuario, auditAcaoFiltro, auditDataInicio, auditDataFim]);
+  }, [auditUsuarioBusca, auditAcaoFiltro, auditDataInicio, auditDataFim]);
 
   // ================= LÓGICA DE FILTRAGEM: DASHBOARD =================
   const serieGraficoFiltrada = useMemo(() => {
@@ -298,10 +295,6 @@ function AdminSistema() {
       const usuarioStr = (log.usuario || "").toLowerCase();
       const nomeStr = (log.nome_usuario || "").toLowerCase();
       const ipStr = (log.ip_address || "").toLowerCase();
-      const isAnonimo =
-        usuarioStr.includes("anônimo") ||
-        usuarioStr.includes("anonimo") ||
-        usuarioStr.includes("sistema");
 
       // 1. Filtro por Usuário associado (e-mail, nome ou IP)
       const matchUsuario =
@@ -310,32 +303,17 @@ function AdminSistema() {
         nomeStr.includes(termoUsuario) ||
         ipStr.includes(termoUsuario);
 
-      // 2. Filtro por tipo de conta associada
-      const matchTipoUsuario =
-        auditTipoUsuario === "todos" ||
-        (auditTipoUsuario === "autenticados" && !isAnonimo) ||
-        (auditTipoUsuario === "anonimos" && isAnonimo);
-
-      // 3. Filtro por Ação
+      // 2. Filtro por Ação
       const matchAcao = auditAcaoFiltro === "todas" || log.action === auditAcaoFiltro;
 
-      // 4. Filtro por Data (Início e Fim)
+      // 3. Filtro por Data (Início e Fim)
       const dataLogIso = extractIsoDate(log.data_iso, log.timestamp);
       const matchDataInicio = !auditDataInicio || (dataLogIso && dataLogIso >= auditDataInicio);
       const matchDataFim = !auditDataFim || (dataLogIso && dataLogIso <= auditDataFim);
 
-      return (
-        matchUsuario && matchTipoUsuario && matchAcao && matchDataInicio && matchDataFim
-      );
+      return matchUsuario && matchAcao && matchDataInicio && matchDataFim;
     });
-  }, [
-    todosLogsAuditoria,
-    auditUsuarioBusca,
-    auditTipoUsuario,
-    auditAcaoFiltro,
-    auditDataInicio,
-    auditDataFim,
-  ]);
+  }, [todosLogsAuditoria, auditUsuarioBusca, auditAcaoFiltro, auditDataInicio, auditDataFim]);
 
   const totalPaginasAuditoria = Math.max(
     1,
@@ -481,9 +459,9 @@ function AdminSistema() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
               {/* Seletor de Período Rápido */}
-              <div className="md:col-span-3">
+              <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                   Janela de Tempo
                 </label>
@@ -495,43 +473,43 @@ function AdminSistema() {
                   <option value="7d">Últimos 7 dias</option>
                   <option value="15d">Últimos 15 dias</option>
                   <option value="30d">Últimos 30 dias</option>
-                  <option value="custom">Intervalo de Datas Personalizado</option>
+                  <option value="custom">Intervalo Personalizado</option>
                 </select>
               </div>
 
-              {/* Datas Personalizadas (exibidas/ativas quando custom ou para refinar) */}
-              <div className="md:col-span-3">
+              {/* Datas Personalizadas */}
+              <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                  Data Inicial
+                  De (Data Inicial)
                 </label>
-                <Input
+                <input
                   type="date"
                   value={dashDataInicio}
                   onChange={(e) => {
                     setDashDataInicio(e.target.value);
                     setPeriodoDashboard("custom");
                   }}
-                  className="h-10 text-xs"
+                  className={DATE_INPUT_CLASS}
                 />
               </div>
 
-              <div className="md:col-span-3">
+              <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                  Data Final
+                  Até (Data Final)
                 </label>
-                <Input
+                <input
                   type="date"
                   value={dashDataFim}
                   onChange={(e) => {
                     setDashDataFim(e.target.value);
                     setPeriodoDashboard("custom");
                   }}
-                  className="h-10 text-xs"
+                  className={DATE_INPUT_CLASS}
                 />
               </div>
 
               {/* Filtro Condicional de Exibição de Gráficos */}
-              <div className="md:col-span-3">
+              <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                   Foco dos Gráficos
                 </label>
@@ -1043,13 +1021,12 @@ function AdminSistema() {
                       Trilha de Auditoria e Rastreabilidade (Append-Only)
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Filtre eventos imutáveis por intervalo de datas, usuário associado (e-mail/nome/IP) e tipo de ação.
+                      Filtre eventos imutáveis por usuário associado (e-mail/nome/IP), ação registrada e intervalo de datas.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {(auditUsuarioBusca ||
-                    auditTipoUsuario !== "todos" ||
                     auditAcaoFiltro !== "todas" ||
                     auditDataInicio ||
                     auditDataFim) && (
@@ -1057,7 +1034,6 @@ function AdminSistema() {
                       type="button"
                       onClick={() => {
                         setAuditUsuarioBusca("");
-                        setAuditTipoUsuario("todos");
                         setAuditAcaoFiltro("todas");
                         setAuditDataInicio("");
                         setAuditDataFim("");
@@ -1073,9 +1049,9 @@ function AdminSistema() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
                 {/* Busca por Usuário Associado / IP */}
-                <div className="relative md:col-span-4">
+                <div className="lg:col-span-4">
                   <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                     Usuário Associado / IP
                   </label>
@@ -1091,7 +1067,7 @@ function AdminSistema() {
                 </div>
 
                 {/* Filtro por Ação */}
-                <div className="md:col-span-3">
+                <div className="lg:col-span-3">
                   <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                     Ação / Evento Registrado
                   </label>
@@ -1109,108 +1085,79 @@ function AdminSistema() {
                   </select>
                 </div>
 
-                {/* Filtro por Tipo de Vínculo */}
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                    Vínculo de Conta
-                  </label>
-                  <select
-                    value={auditTipoUsuario}
-                    onChange={(e) => setAuditTipoUsuario(e.target.value as any)}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="autenticados">Autenticados</option>
-                    <option value="anonimos">Anônimo / Sistema</option>
-                  </select>
-                </div>
-
-                {/* Filtro por Data Inicial e Data Final */}
-                <div className="grid grid-cols-2 gap-2 md:col-span-3">
+                {/* Filtro por Data Inicial e Data Final com largura confortável */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-5">
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                      De (Data)
+                      De (Data Inicial)
                     </label>
-                    <Input
+                    <input
                       type="date"
                       value={auditDataInicio}
                       onChange={(e) => setAuditDataInicio(e.target.value)}
-                      className="h-10 px-2 text-xs"
+                      className={DATE_INPUT_CLASS}
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                      Até (Data)
+                      Até (Data Final)
                     </label>
-                    <Input
+                    <input
                       type="date"
                       value={auditDataFim}
                       onChange={(e) => setAuditDataFim(e.target.value)}
-                      className="h-10 px-2 text-xs"
+                      className={DATE_INPUT_CLASS}
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Tabela de Eventos de Auditoria */}
+            {/* Tabela de Eventos de Auditoria (Sem coluna de Payload) */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[850px] text-left text-xs">
+              <table className="w-full min-w-[700px] text-left text-xs">
                 <thead>
                   <tr className="bg-muted/50 uppercase tracking-wide text-muted-foreground">
                     <th className="p-4 font-bold">Evento / Ação</th>
                     <th className="p-4 font-bold">Usuário Associado</th>
                     <th className="p-4 font-bold">IP de Origem</th>
-                    <th className="p-4 font-bold">Metadados (Payload)</th>
                     <th className="p-4 text-right font-bold">Data / Hora (BRT)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {logsAuditoriaPaginados.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
                         Nenhum registro de auditoria encontrado para os filtros informados.
                       </td>
                     </tr>
                   ) : (
-                    logsAuditoriaPaginados.map((log) => {
-                      const payloadKeys = log.payload ? Object.keys(log.payload) : [];
-                      return (
-                        <tr key={log.id} className="transition-colors hover:bg-muted/25">
-                          <td className="p-4">
-                            <span
-                              className={cn(
-                                "inline-block rounded-md border px-2.5 py-1 font-mono text-[11px] font-bold",
-                                getAuditBadgeStyle(log.action),
-                              )}
-                            >
-                              {log.action}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-bold text-foreground">{log.usuario}</div>
-                            {log.nome_usuario && (
-                              <div className="text-[11px] text-muted-foreground">
-                                {log.nome_usuario}
-                              </div>
+                    logsAuditoriaPaginados.map((log) => (
+                      <tr key={log.id} className="transition-colors hover:bg-muted/25">
+                        <td className="p-4">
+                          <span
+                            className={cn(
+                              "inline-block rounded-md border px-2.5 py-1 font-mono text-[11px] font-bold",
+                              getAuditBadgeStyle(log.action),
                             )}
-                          </td>
-                          <td className="p-4 font-mono text-muted-foreground">{log.ip_address}</td>
-                          <td className="p-4 max-w-xs">
-                            {payloadKeys.length === 0 ? (
-                              <span className="text-muted-foreground/60">—</span>
-                            ) : (
-                              <code className="block truncate rounded bg-muted/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
-                                {JSON.stringify(log.payload)}
-                              </code>
-                            )}
-                          </td>
-                          <td className="p-4 text-right font-mono text-muted-foreground">
-                            {log.timestamp}
-                          </td>
-                        </tr>
-                      );
-                    })
+                          >
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-bold text-foreground">{log.usuario}</div>
+                          {log.nome_usuario && (
+                            <div className="text-[11px] text-muted-foreground">
+                              {log.nome_usuario}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-4 font-mono text-muted-foreground">{log.ip_address}</td>
+                        <td className="p-4 text-right font-mono text-muted-foreground">
+                          {log.timestamp}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
