@@ -403,7 +403,7 @@ function AdminSistema() {
       <SectionTitle
         eyebrow="Administração Central e Observabilidade"
         title="Painel de Controle do Sistema"
-        description="Monitore indicadores globais (Big Numbers), telemetria pedagógica com filtros condicionais, controle de acesso (RBAC) e trilha de auditoria imutável."
+        description="Acompanhe indicadores globais, Gestão de usuários cadastrados e trilha de auditoria."
       />
 
       <Tabs defaultValue="dashboard" className="mt-6 w-full">
