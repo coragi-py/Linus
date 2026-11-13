@@ -15,6 +15,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
   FileSearch,
+  PieChart,
 } from "lucide-react";
 import {
   Bar,
@@ -49,6 +50,13 @@ type AuditLogItem = {
   ip_address: string;
   timestamp: string;
   data_iso?: string;
+};
+
+type FaixaEtariaItem = {
+  faixa: string;
+  perfil: string;
+  usuarios: number;
+  percentual: number;
 };
 
 const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
@@ -106,7 +114,9 @@ function AdminSistema() {
   const [periodoDashboard, setPeriodoDashboard] = useState<"7d" | "15d" | "30d" | "custom">("7d");
   const [dashDataInicio, setDashDataInicio] = useState("");
   const [dashDataFim, setDashDataFim] = useState("");
-  const [visaoGraficos, setVisaoGraficos] = useState<"todos" | "acessos" | "pedagogico">("todos");
+  const [visaoGraficos, setVisaoGraficos] = useState<
+    "todos" | "acessos" | "pedagogico" | "demografia"
+  >("todos");
   const [filtroNivelTopico, setFiltroNivelTopico] = useState<
     "todos" | "critico" | "atencao" | "adequado"
   >("todos");
@@ -207,6 +217,16 @@ function AdminSistema() {
       { logins: 0, novosCadastros: 0, licoes: 0, exercicios: 0 },
     );
   }, [serieGraficoFiltrada]);
+
+  const demografiaEtaria: FaixaEtariaItem[] = useMemo(() => {
+    return Array.isArray(metricas?.demografia_etaria) ? metricas.demografia_etaria : [];
+  }, [metricas]);
+
+  const resumoDemografico = metricas?.resumo_demografico || {
+    total_mapeado: 0,
+    idade_media: 0,
+    faixa_predominante: "N/A",
+  };
 
   const topicosFiltrados = useMemo(() => {
     const lista: any[] = Array.isArray(metricas?.desempenho_topicos)
@@ -386,7 +406,7 @@ function AdminSistema() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <p className="animate-pulse font-bold text-muted-foreground">
-          Sincronizando telemetria, auditoria e base de usuários...
+          Carregando informações...
         </p>
       </div>
     );
@@ -401,9 +421,9 @@ function AdminSistema() {
   return (
     <div className="mx-auto min-h-screen max-w-6xl px-4 py-12">
       <SectionTitle
-        eyebrow="Administração Central e Observabilidade"
+        eyebrow="Administração Central"
         title="Painel de Controle do Sistema"
-        description="Acompanhe indicadores globais, Gestão de usuários cadastrados e trilha de auditoria."
+        description="Acompanhe indicadores globais, demografia etária, telemetria pedagógica, gestão de usuários e trilha de auditoria."
       />
 
       <Tabs defaultValue="dashboard" className="mt-6 w-full">
@@ -521,6 +541,7 @@ function AdminSistema() {
                   <option value="todos">Todos os Indicadores</option>
                   <option value="acessos">Apenas Acessos & Cadastros</option>
                   <option value="pedagogico">Apenas Engajamento Pedagógico</option>
+                  <option value="demografia">Apenas Demografia Etária (LGPD)</option>
                 </select>
               </div>
             </div>
@@ -621,85 +642,171 @@ function AdminSistema() {
             </div>
           </section>
 
-          {/* Linha 3: Gráficos de Evolução (Condicionais conforme filtro visaoGraficos e Período) */}
-          <div
-            className={cn(
-              "grid gap-5",
-              visaoGraficos === "todos" ? "lg:grid-cols-2" : "grid-cols-1",
-            )}
-          >
-            {(visaoGraficos === "todos" || visaoGraficos === "acessos") && (
-              <section className="neu rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-display text-lg">
-                  Acessos Ativos vs. Novos Cadastros ({serieGraficoFiltrada.length} dias)
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Volume diário de estudantes com login registrado e novas contas criadas no período filtrado.
-                </p>
-                <div className="mt-4 h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={serieGraficoFiltrada}>
-                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
-                      <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
-                      <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
-                      <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line
-                        type="monotone"
-                        dataKey="ativos"
-                        name="Logins no Dia"
-                        stroke="var(--success)"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="novos_registros"
-                        name="Novos Cadastros"
-                        stroke="var(--primary)"
-                        strokeWidth={2.5}
-                        dot={{ r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-            )}
+          {/* Linha 3: Gráficos de Evolução Temporal */}
+          {(visaoGraficos === "todos" ||
+            visaoGraficos === "acessos" ||
+            visaoGraficos === "pedagogico") && (
+            <div
+              className={cn(
+                "grid gap-5",
+                visaoGraficos === "todos" ? "lg:grid-cols-2" : "grid-cols-1",
+              )}
+            >
+              {(visaoGraficos === "todos" || visaoGraficos === "acessos") && (
+                <section className="neu rounded-2xl border border-border bg-card p-6">
+                  <h2 className="font-display text-lg">
+                    Acessos Ativos vs. Novos Cadastros ({serieGraficoFiltrada.length} dias)
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Volume diário de estudantes com login registrado e novas contas criadas no período filtrado.
+                  </p>
+                  <div className="mt-4 h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={serieGraficoFiltrada}>
+                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                        <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line
+                          type="monotone"
+                          dataKey="ativos"
+                          name="Logins no Dia"
+                          stroke="var(--success)"
+                          strokeWidth={3}
+                          dot={{ r: 4 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="novos_registros"
+                          name="Novos Cadastros"
+                          stroke="var(--primary)"
+                          strokeWidth={2.5}
+                          dot={{ r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+              )}
 
-            {(visaoGraficos === "todos" || visaoGraficos === "pedagogico") && (
-              <section className="neu rounded-2xl border border-border bg-card p-6">
-                <h2 className="font-display text-lg">
-                  Engajamento Pedagógico: Aulas & Exercícios ({serieGraficoFiltrada.length} dias)
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Quantidade de lições finalizadas e exercícios submetidos diariamente no período filtrado.
-                </p>
-                <div className="mt-4 h-64">
+              {(visaoGraficos === "todos" || visaoGraficos === "pedagogico") && (
+                <section className="neu rounded-2xl border border-border bg-card p-6">
+                  <h2 className="font-display text-lg">
+                    Engajamento Pedagógico: Aulas & Exercícios ({serieGraficoFiltrada.length} dias)
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Quantidade de lições finalizadas e exercícios submetidos diariamente no período filtrado.
+                  </p>
+                  <div className="mt-4 h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={serieGraficoFiltrada}>
+                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                        <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar
+                          dataKey="exercicios"
+                          name="Exercícios Submetidos"
+                          fill="var(--primary)"
+                          radius={[6, 6, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="licoes"
+                          name="Lições Concluídas"
+                          fill="var(--success)"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* Linha 3.5: Análise Demográfica por Faixa Etária (Público-Alvo conforme Termos de Uso / LGPD) */}
+          {(visaoGraficos === "todos" || visaoGraficos === "demografia") && (
+            <section className="neu rounded-2xl border border-border bg-card p-6 space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <PieChart className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-display text-lg">
+                      Perfil Demográfico por Faixa Etária (Público-Alvo — Art. 14 LGPD)
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Distribuição estatística calculada a partir do ano de nascimento coletado no cadastro (Seção 2 da Política de Privacidade).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-xs font-bold">
+                  <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-primary">
+                    Maior Público-Alvo: <strong>{resumoDemografico.faixa_predominante}</strong>
+                  </span>
+                  <span className="rounded-lg bg-muted px-3 py-1.5 text-foreground">
+                    Idade Média: <strong>{resumoDemografico.idade_media} anos</strong>
+                  </span>
+                  <span className="rounded-lg bg-muted px-3 py-1.5 text-muted-foreground">
+                    Amostra: <strong>{resumoDemografico.total_mapeado} registros</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-12 items-center">
+                {/* Gráfico de Barras por Faixa Etária */}
+                <div className="h-64 lg:col-span-7">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={serieGraficoFiltrada}>
+                    <BarChart data={demografiaEtaria}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
-                      <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
+                      <XAxis dataKey="faixa" stroke="var(--muted-foreground)" fontSize={11} />
                       <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
                       <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
                       <Bar
-                        dataKey="exercicios"
-                        name="Exercícios Submetidos"
+                        dataKey="usuarios"
+                        name="Usuários na Faixa Etária"
                         fill="var(--primary)"
-                        radius={[6, 6, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="licoes"
-                        name="Lições Concluídas"
-                        fill="var(--success)"
                         radius={[6, 6, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </section>
-            )}
-          </div>
+
+                {/* Detalhamento Percentual por Segmento Etário */}
+                <div className="space-y-3 lg:col-span-5">
+                  {demografiaEtaria.map((item) => (
+                    <div
+                      key={item.faixa}
+                      className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <div>
+                          <span className="text-foreground">{item.faixa}</span>
+                          <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                            · {item.perfil}
+                          </span>
+                        </div>
+                        <span className="text-primary">
+                          {item.usuarios} ({item.percentual}%)
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${Math.min(100, item.percentual)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Linha 4: Taxa de Acerto Global por Tópico com Filtros Condicionais */}
           <section className="neu rounded-2xl border border-border bg-card p-6 space-y-5">
@@ -1018,10 +1125,10 @@ function AdminSistema() {
                   <FileSearch className="size-5 text-primary" />
                   <div>
                     <h2 className="font-display text-lg">
-                      Trilha de Auditoria e Rastreabilidade (Append-Only)
+                      Painel de Auditoria
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Filtre eventos imutáveis por usuário associado (e-mail/nome/IP), ação registrada e intervalo de datas.
+                      Filtre eventos do sistema por usuário associado (e-mail/nome/IP), ação registrada e intervalo de datas.
                     </p>
                   </div>
                 </div>
