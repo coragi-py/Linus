@@ -441,7 +441,7 @@ class AdminSystemMetricsView(APIView):
         from music.models import Musica
         from progress.models import ProgressoAula
 
-        # Filtra usuários válidos (exclui contas anonimizadas pela LGPD)
+        # Filtra usuários ativos/válidos (exclui contas anonimizadas pela LGPD da listagem operacional)
         valid_users = (
             User.objects.exclude(email__endswith="@anon.com")
             .exclude(email__endswith="@deleted.local")
@@ -484,7 +484,7 @@ class AdminSystemMetricsView(APIView):
             "gravacoes_playground": Musica.objects.count(),
         }
 
-        # Série histórica parametrizável (padrão 7 dias para compatibilidade; até 90 dias para o filtro do Dashboard)
+        # Série histórica parametrizável (padrão 7 dias; até 90 dias para filtros do Dashboard)
         try:
             dias_param = int(request.query_params.get("days", 7))
             num_dias = min(max(dias_param, 1), 90)
@@ -492,6 +492,7 @@ class AdminSystemMetricsView(APIView):
             num_dias = 7
 
         hoje = timezone.localdate()
+        ano_atual = hoje.year
         dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
         atividade_diaria = []
 
@@ -517,6 +518,58 @@ class AdminSystemMetricsView(APIView):
                 "exercicios": tentativas_dia,
             })
 
+        # Análise Demográfica por Faixa Etária (Art. 14 e Seção 2 da Política de Privacidade - LGPD)
+        # Inclui os anos de nascimento retidos para fins estatísticos
+        anos_nascimento = list(
+            User.objects.filter(ano_nascimento__isnull=False).values_list("ano_nascimento", flat=True)
+        )
+        faixas_config = [
+            ("12–17 anos", "Adolescentes (Ensino Básico)", 12, 17),
+            ("18–24 anos", "Jovens / Universitários", 18, 24),
+            ("25–34 anos", "Jovens Adultos", 25, 34),
+            ("35–49 anos", "Adultos", 35, 49),
+            ("50+ anos", "Sênior / 50+", 50, 130),
+        ]
+        contagem_faixas = {f[0]: 0 for f in faixas_config}
+        soma_idades = 0
+        total_idades_validas = 0
+
+        for ano in anos_nascimento:
+            try:
+                idade = ano_atual - int(ano)
+            except (ValueError, TypeError):
+                continue
+            if 12 <= idade <= 130:
+                soma_idades += idade
+                total_idades_validas += 1
+                for label, _, min_i, max_i in faixas_config:
+                    if min_i <= idade <= max_i:
+                        contagem_faixas[label] += 1
+                        break
+
+        demografia_etaria = []
+        faixa_predominante = "N/A"
+        maior_contagem = 0
+
+        for label, perfil_desc, _, _ in faixas_config:
+            qtd = contagem_faixas[label]
+            perc = round((qtd / total_idades_validas) * 100, 1) if total_idades_validas > 0 else 0.0
+            if qtd > maior_contagem:
+                maior_contagem = qtd
+                faixa_predominante = f"{label} ({perc}%)"
+            demografia_etaria.append({
+                "faixa": label,
+                "perfil": perfil_desc,
+                "usuarios": qtd,
+                "percentual": perc,
+            })
+
+        resumo_demografico = {
+            "total_mapeado": total_idades_validas,
+            "idade_media": round(soma_idades / total_idades_validas, 1) if total_idades_validas > 0 else 0,
+            "faixa_predominante": faixa_predominante,
+        }
+
         # Desempenho agregado por tópico musical
         por_topico_qs = (
             TentativaExercicio.objects.values("exercicio__tag_topico")
@@ -539,7 +592,7 @@ class AdminSystemMetricsView(APIView):
                 "precisao": round((ac / tot) * 100, 1) if tot > 0 else 0,
             })
 
-        # Eventos de auditoria e segurança (últimos 7 dias nos cards + histórico para a aba de Auditoria)
+        # Eventos de auditoria e segurança
         sete_dias_atras = timezone.now() - timedelta(days=7)
         eventos_7d = AuditLog.objects.filter(timestamp__gte=sete_dias_atras).count()
         falhas_login_7d = AuditLog.objects.filter(
@@ -558,7 +611,6 @@ class AdminSystemMetricsView(APIView):
                 "ip_address": log.ip_address or "0.0.0.0",
                 "timestamp": dt_local.strftime("%d/%m/%Y %H:%M"),
                 "data_iso": dt_local.strftime("%Y-%m-%d"),
-                "payload": log.payload if isinstance(log.payload, dict) else {},
             })
 
         return Response(
@@ -578,6 +630,8 @@ class AdminSystemMetricsView(APIView):
                 "distribuicao_papeis": distribuicao_papeis,
                 "acervo": acervo,
                 "grafico": atividade_diaria,
+                "demografia_etaria": demografia_etaria,
+                "resumo_demografico": resumo_demografico,
                 "desempenho_topicos": desempenho_topicos,
                 "ultimos_logs": ultimos_logs,
             },
