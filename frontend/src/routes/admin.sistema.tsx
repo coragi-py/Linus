@@ -13,6 +13,10 @@ import {
   ChevronRight,
   Lock,
   Layers,
+  Calendar,
+  RotateCcw,
+  SlidersHorizontal,
+  FileSearch,
 } from "lucide-react";
 import {
   Bar,
@@ -39,10 +43,21 @@ export const Route = createFileRoute("/admin/sistema")({
 
 type RealUser = { id: string; nome: string; email: string; role: Role; ativo: boolean };
 
-const API_URL = `${
-  (import.meta.env.VITE_API_URL || "http://localhost:8000")
-    .replace(/\/+$/, "")
-}/api/v1`;
+type AuditLogItem = {
+  id: string;
+  action: string;
+  usuario: string;
+  nome_usuario?: string;
+  ip_address: string;
+  timestamp: string;
+  data_iso?: string;
+  payload?: Record<string, any>;
+};
+
+const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+)}/api/v1`;
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "estudante", label: "Estudante" },
@@ -51,19 +66,72 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 ];
 
 const ITEMS_PER_PAGE = 25;
+const AUDIT_ITEMS_PER_PAGE = 20;
+
+// Extrai YYYY-MM-DD mesmo se data_iso não vier preenchido do backend
+function extractIsoDate(dataIso?: string, timestampStr?: string): string {
+  if (dataIso && /^\d{4}-\d{2}-\d{2}$/.test(dataIso)) return dataIso;
+  if (timestampStr) {
+    const match = timestampStr.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (match) {
+      return `${match[3]}-${match[2]}-${match[1]}`;
+    }
+  }
+  return "";
+}
+
+function getAuditBadgeStyle(action: string): string {
+  const act = (action || "").toUpperCase();
+  if (act.includes("FAILED") || act.includes("BLOCKED") || act.includes("DELETED")) {
+    return "bg-destructive/15 text-destructive border-destructive/30";
+  }
+  if (act.includes("LGPD") || act.includes("CONSENT") || act.includes("ANONYMIZED")) {
+    return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
+  }
+  if (act.includes("ADMIN") || act.includes("CREATED") || act.includes("UPDATED")) {
+    return "bg-primary/15 text-primary border-primary/30";
+  }
+  if (act.includes("LESSON") || act.includes("STREAK")) {
+    return "bg-success/15 text-success border-success/30";
+  }
+  return "bg-muted text-foreground border-border";
+}
 
 function AdminSistema() {
   const [usuarios, setUsuarios] = useState<RealUser[]>([]);
   const [metricas, setMetricas] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Estados de Filtro e Paginação da Tabela de Usuários
+  // ================= ESTADOS: FILTROS DO DASHBOARD =================
+  const [periodoDashboard, setPeriodoDashboard] = useState<"7d" | "15d" | "30d" | "custom">("7d");
+  const [dashDataInicio, setDashDataInicio] = useState("");
+  const [dashDataFim, setDashDataFim] = useState("");
+  const [visaoGraficos, setVisaoGraficos] = useState<"todos" | "acessos" | "pedagogico">("todos");
+  const [filtroNivelTopico, setFiltroNivelTopico] = useState<
+    "todos" | "critico" | "atencao" | "adequado"
+  >("todos");
+  const [ordenacaoTopico, setOrdenacaoTopico] = useState<
+    "volume" | "menor_precisao" | "maior_precisao" | "alfabetica"
+  >("volume");
+  const [buscaTopico, setBuscaTopico] = useState("");
+
+  // ================= ESTADOS: GESTÃO DE USUÁRIOS =================
   const [buscaTexto, setBuscaTexto] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativos" | "suspensos">("todos");
   const [filtroRole, setFiltroRole] = useState<"todos" | "estudante" | "conteudo" | "sistema">(
     "todos",
   );
   const [paginaAtual, setPaginaAtual] = useState(1);
+
+  // ================= ESTADOS: ABA DE AUDITORIA =================
+  const [auditUsuarioBusca, setAuditUsuarioBusca] = useState("");
+  const [auditTipoUsuario, setAuditTipoUsuario] = useState<"todos" | "autenticados" | "anonimos">(
+    "todos",
+  );
+  const [auditAcaoFiltro, setAuditAcaoFiltro] = useState("todas");
+  const [auditDataInicio, setAuditDataInicio] = useState("");
+  const [auditDataFim, setAuditDataFim] = useState("");
+  const [paginaAuditoria, setPaginaAuditoria] = useState(1);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,7 +141,7 @@ function AdminSistema() {
 
         const [resUsers, resMetrics] = await Promise.all([
           fetch(`${API_URL}/auth/admin/users/`, { headers }),
-          fetch(`${API_URL}/auth/admin/metrics/`, { headers }),
+          fetch(`${API_URL}/auth/admin/metrics/?days=30`, { headers }),
         ]);
 
         if (!resUsers.ok || !resMetrics.ok) {
@@ -102,11 +170,79 @@ function AdminSistema() {
     void fetchData();
   }, []);
 
-  // Reseta para a página 1 sempre que os filtros mudarem
+  // Reseta página de usuários ao mudar filtros
   useEffect(() => {
     setPaginaAtual(1);
   }, [buscaTexto, filtroStatus, filtroRole]);
 
+  // Reseta página de auditoria ao mudar filtros
+  useEffect(() => {
+    setPaginaAuditoria(1);
+  }, [auditUsuarioBusca, auditTipoUsuario, auditAcaoFiltro, auditDataInicio, auditDataFim]);
+
+  // ================= LÓGICA DE FILTRAGEM: DASHBOARD =================
+  const serieGraficoFiltrada = useMemo(() => {
+    const serieOriginal: any[] = Array.isArray(metricas?.grafico) ? metricas.grafico : [];
+    if (serieOriginal.length === 0) return [];
+
+    if (periodoDashboard === "custom" && (dashDataInicio || dashDataFim)) {
+      return serieOriginal.filter((item) => {
+        const iso = item.data_iso || "";
+        if (!iso) return true;
+        if (dashDataInicio && iso < dashDataInicio) return false;
+        if (dashDataFim && iso > dashDataFim) return false;
+        return true;
+      });
+    }
+
+    const qtdDias = periodoDashboard === "7d" ? 7 : periodoDashboard === "15d" ? 15 : 30;
+    return serieOriginal.slice(-qtdDias);
+  }, [metricas, periodoDashboard, dashDataInicio, dashDataFim]);
+
+  const resumoPeriodoSelecionado = useMemo(() => {
+    return serieGraficoFiltrada.reduce(
+      (acc, dia) => ({
+        logins: acc.logins + (Number(dia.ativos) || 0),
+        novosCadastros: acc.novosCadastros + (Number(dia.novos_registros) || 0),
+        licoes: acc.licoes + (Number(dia.licoes) || 0),
+        exercicios: acc.exercicios + (Number(dia.exercicios) || 0),
+      }),
+      { logins: 0, novosCadastros: 0, licoes: 0, exercicios: 0 },
+    );
+  }, [serieGraficoFiltrada]);
+
+  const topicosFiltrados = useMemo(() => {
+    const lista: any[] = Array.isArray(metricas?.desempenho_topicos)
+      ? [...metricas.desempenho_topicos]
+      : [];
+
+    const termo = buscaTopico.trim().toLowerCase();
+
+    const filtrada = lista.filter((item) => {
+      const matchNome = !termo || String(item.topico || "").toLowerCase().includes(termo);
+      const p = Number(item.precisao) || 0;
+
+      const matchNivel =
+        filtroNivelTopico === "todos" ||
+        (filtroNivelTopico === "critico" && p < 50) ||
+        (filtroNivelTopico === "atencao" && p >= 50 && p < 75) ||
+        (filtroNivelTopico === "adequado" && p >= 75);
+
+      return matchNome && matchNivel;
+    });
+
+    filtrada.sort((a, b) => {
+      if (ordenacaoTopico === "menor_precisao") return a.precisao - b.precisao;
+      if (ordenacaoTopico === "maior_precisao") return b.precisao - a.precisao;
+      if (ordenacaoTopico === "alfabetica")
+        return String(a.topico).localeCompare(String(b.topico));
+      return (b.total || 0) - (a.total || 0);
+    });
+
+    return filtrada;
+  }, [metricas, buscaTopico, filtroNivelTopico, ordenacaoTopico]);
+
+  // ================= LÓGICA DE FILTRAGEM: USUÁRIOS =================
   const usuariosFiltrados = useMemo(() => {
     const termo = buscaTexto.trim().toLowerCase();
 
@@ -142,6 +278,76 @@ function AdminSistema() {
     return usuariosFiltrados.slice(inicio, inicio + ITEMS_PER_PAGE);
   }, [usuariosFiltrados, paginaAtual]);
 
+  // ================= LÓGICA DE FILTRAGEM: AUDITORIA =================
+  const todosLogsAuditoria: AuditLogItem[] = useMemo(() => {
+    return Array.isArray(metricas?.ultimos_logs) ? metricas.ultimos_logs : [];
+  }, [metricas]);
+
+  const acoesUnicasAuditoria = useMemo(() => {
+    const setAcoes = new Set<string>();
+    todosLogsAuditoria.forEach((log) => {
+      if (log.action) setAcoes.add(log.action);
+    });
+    return Array.from(setAcoes).sort();
+  }, [todosLogsAuditoria]);
+
+  const logsAuditoriaFiltrados = useMemo(() => {
+    const termoUsuario = auditUsuarioBusca.trim().toLowerCase();
+
+    return todosLogsAuditoria.filter((log) => {
+      const usuarioStr = (log.usuario || "").toLowerCase();
+      const nomeStr = (log.nome_usuario || "").toLowerCase();
+      const ipStr = (log.ip_address || "").toLowerCase();
+      const isAnonimo =
+        usuarioStr.includes("anônimo") ||
+        usuarioStr.includes("anonimo") ||
+        usuarioStr.includes("sistema");
+
+      // 1. Filtro por Usuário associado (e-mail, nome ou IP)
+      const matchUsuario =
+        !termoUsuario ||
+        usuarioStr.includes(termoUsuario) ||
+        nomeStr.includes(termoUsuario) ||
+        ipStr.includes(termoUsuario);
+
+      // 2. Filtro por tipo de conta associada
+      const matchTipoUsuario =
+        auditTipoUsuario === "todos" ||
+        (auditTipoUsuario === "autenticados" && !isAnonimo) ||
+        (auditTipoUsuario === "anonimos" && isAnonimo);
+
+      // 3. Filtro por Ação
+      const matchAcao = auditAcaoFiltro === "todas" || log.action === auditAcaoFiltro;
+
+      // 4. Filtro por Data (Início e Fim)
+      const dataLogIso = extractIsoDate(log.data_iso, log.timestamp);
+      const matchDataInicio = !auditDataInicio || (dataLogIso && dataLogIso >= auditDataInicio);
+      const matchDataFim = !auditDataFim || (dataLogIso && dataLogIso <= auditDataFim);
+
+      return (
+        matchUsuario && matchTipoUsuario && matchAcao && matchDataInicio && matchDataFim
+      );
+    });
+  }, [
+    todosLogsAuditoria,
+    auditUsuarioBusca,
+    auditTipoUsuario,
+    auditAcaoFiltro,
+    auditDataInicio,
+    auditDataFim,
+  ]);
+
+  const totalPaginasAuditoria = Math.max(
+    1,
+    Math.ceil(logsAuditoriaFiltrados.length / AUDIT_ITEMS_PER_PAGE),
+  );
+
+  const logsAuditoriaPaginados = useMemo(() => {
+    const inicio = (paginaAuditoria - 1) * AUDIT_ITEMS_PER_PAGE;
+    return logsAuditoriaFiltrados.slice(inicio, inicio + AUDIT_ITEMS_PER_PAGE);
+  }, [logsAuditoriaFiltrados, paginaAuditoria]);
+
+  // ================= HANDLERS DE ATUALIZAÇÃO DE USUÁRIO =================
   const handleUpdateRole = async (userId: string, newRole: Role) => {
     try {
       const token = localStorage.getItem("access_token");
@@ -202,7 +408,7 @@ function AdminSistema() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <p className="animate-pulse font-bold text-muted-foreground">
-          Sincronizando telemetria e base de usuários...
+          Sincronizando telemetria, auditoria e base de usuários...
         </p>
       </div>
     );
@@ -219,22 +425,154 @@ function AdminSistema() {
       <SectionTitle
         eyebrow="Administração Central e Observabilidade"
         title="Painel de Controle do Sistema"
-        description="Monitore indicadores globais (Big Numbers), telemetria pedagógica, trilha de auditoria e controle de acesso (RBAC)."
+        description="Monitore indicadores globais (Big Numbers), telemetria pedagógica com filtros condicionais, controle de acesso (RBAC) e trilha de auditoria imutável."
       />
 
       <Tabs defaultValue="dashboard" className="mt-6 w-full">
-        <TabsList className="mb-8 grid h-12 w-full max-w-md grid-cols-2">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2 text-sm font-bold">
+        <TabsList className="mb-8 grid h-12 w-full max-w-2xl grid-cols-3">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
             <Activity className="size-4" /> Dashboard & Métricas
           </TabsTrigger>
-          <TabsTrigger value="usuarios" className="flex items-center gap-2 text-sm font-bold">
+          <TabsTrigger value="usuarios" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
             <Users className="size-4" /> Gestão de Usuários ({usuarios.length})
+          </TabsTrigger>
+          <TabsTrigger value="auditoria" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+            <ShieldCheck className="size-4" /> Auditoria ({todosLogsAuditoria.length})
           </TabsTrigger>
         </TabsList>
 
-        {/* ================= ABA 1: DASHBOARD DE MÉTRICAS (BIG NUMBERS) ================= */}
+        {/* ================= ABA 1: DASHBOARD DE MÉTRICAS COM FILTROS CONDICIONAIS E DE DATA ================= */}
         <TabsContent value="dashboard" className="space-y-8 animate-in fade-in-50">
-          {/* Linha 1: Big Numbers de Usuários, Aprendizagem e Segurança */}
+          {/* Barra de Filtros Condicionais e de Data do Dashboard */}
+          <section className="neu rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="size-5 text-primary" />
+                <div>
+                  <h2 className="font-display text-base font-bold">
+                    Filtros de Período e Visualização Condicional
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Ajuste a janela temporal das séries históricas e filtre as dimensões analíticas do painel.
+                  </p>
+                </div>
+              </div>
+
+              {(periodoDashboard !== "7d" ||
+                visaoGraficos !== "todos" ||
+                filtroNivelTopico !== "todos" ||
+                dashDataInicio ||
+                dashDataFim) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeriodoDashboard("7d");
+                    setDashDataInicio("");
+                    setDashDataFim("");
+                    setVisaoGraficos("todos");
+                    setFiltroNivelTopico("todos");
+                    setOrdenacaoTopico("volume");
+                    setBuscaTopico("");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted"
+                >
+                  <RotateCcw className="size-3.5" /> Restaurar Padrão
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+              {/* Seletor de Período Rápido */}
+              <div className="md:col-span-3">
+                <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                  Janela de Tempo
+                </label>
+                <select
+                  value={periodoDashboard}
+                  onChange={(e) => setPeriodoDashboard(e.target.value as any)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                >
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="15d">Últimos 15 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="custom">Intervalo de Datas Personalizado</option>
+                </select>
+              </div>
+
+              {/* Datas Personalizadas (exibidas/ativas quando custom ou para refinar) */}
+              <div className="md:col-span-3">
+                <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                  Data Inicial
+                </label>
+                <Input
+                  type="date"
+                  value={dashDataInicio}
+                  onChange={(e) => {
+                    setDashDataInicio(e.target.value);
+                    setPeriodoDashboard("custom");
+                  }}
+                  className="h-10 text-xs"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                  Data Final
+                </label>
+                <Input
+                  type="date"
+                  value={dashDataFim}
+                  onChange={(e) => {
+                    setDashDataFim(e.target.value);
+                    setPeriodoDashboard("custom");
+                  }}
+                  className="h-10 text-xs"
+                />
+              </div>
+
+              {/* Filtro Condicional de Exibição de Gráficos */}
+              <div className="md:col-span-3">
+                <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                  Foco dos Gráficos
+                </label>
+                <select
+                  value={visaoGraficos}
+                  onChange={(e) => setVisaoGraficos(e.target.value as any)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                >
+                  <option value="todos">Todos os Indicadores</option>
+                  <option value="acessos">Apenas Acessos & Cadastros</option>
+                  <option value="pedagogico">Apenas Engajamento Pedagógico</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Resumo Dinâmico do Período Filtrado */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-4 py-2.5 text-xs">
+              <span className="font-bold text-muted-foreground">
+                Acumulado no período selecionado ({serieGraficoFiltrada.length} dia(s)):
+              </span>
+              <div className="flex flex-wrap gap-4 font-bold">
+                <span>
+                  Logins: <strong className="text-success">{resumoPeriodoSelecionado.logins}</strong>
+                </span>
+                <span>
+                  Novos Cadastros:{" "}
+                  <strong className="text-primary">{resumoPeriodoSelecionado.novosCadastros}</strong>
+                </span>
+                <span>
+                  Lições Concluídas:{" "}
+                  <strong className="text-success">{resumoPeriodoSelecionado.licoes}</strong>
+                </span>
+                <span>
+                  Exercícios Submetidos:{" "}
+                  <strong className="text-primary">{resumoPeriodoSelecionado.exercicios}</strong>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Linha 1: Big Numbers Globais */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard
               icon={Users}
@@ -305,143 +643,190 @@ function AdminSistema() {
             </div>
           </section>
 
-          {/* Linha 3: Gráficos de Evolução (Últimos 7 dias) */}
-          <div className="grid gap-5 lg:grid-cols-2">
-            <section className="neu rounded-2xl border border-border bg-card p-6">
-              <h2 className="font-display text-lg">Acessos Ativos vs. Novos Cadastros (7 dias)</h2>
-              <p className="text-xs text-muted-foreground">
-                Volume diário de estudantes com login registrado e novas contas criadas.
-              </p>
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={metricas?.grafico || []}>
-                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
-                    <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line
-                      type="monotone"
-                      dataKey="ativos"
-                      name="Logins no Dia"
-                      stroke="var(--success)"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="novos_registros"
-                      name="Novos Cadastros"
-                      stroke="var(--primary)"
-                      strokeWidth={2.5}
-                      dot={{ r: 3 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
+          {/* Linha 3: Gráficos de Evolução (Condicionais conforme filtro visaoGraficos e Período) */}
+          <div
+            className={cn(
+              "grid gap-5",
+              visaoGraficos === "todos" ? "lg:grid-cols-2" : "grid-cols-1",
+            )}
+          >
+            {(visaoGraficos === "todos" || visaoGraficos === "acessos") && (
+              <section className="neu rounded-2xl border border-border bg-card p-6">
+                <h2 className="font-display text-lg">
+                  Acessos Ativos vs. Novos Cadastros ({serieGraficoFiltrada.length} dias)
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Volume diário de estudantes com login registrado e novas contas criadas no período filtrado.
+                </p>
+                <div className="mt-4 h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={serieGraficoFiltrada}>
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="ativos"
+                        name="Logins no Dia"
+                        stroke="var(--success)"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="novos_registros"
+                        name="Novos Cadastros"
+                        stroke="var(--primary)"
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
 
-            <section className="neu rounded-2xl border border-border bg-card p-6">
-              <h2 className="font-display text-lg">
-                Engajamento Pedagógico: Aulas & Exercícios (7 dias)
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Quantidade de lições finalizadas e exercícios submetidos diariamente.
-              </p>
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metricas?.grafico || []}>
-                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
-                    <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar
-                      dataKey="exercicios"
-                      name="Exercícios Submetidos"
-                      fill="var(--primary)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="licoes"
-                      name="Lições Concluídas"
-                      fill="var(--success)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
+            {(visaoGraficos === "todos" || visaoGraficos === "pedagogico") && (
+              <section className="neu rounded-2xl border border-border bg-card p-6">
+                <h2 className="font-display text-lg">
+                  Engajamento Pedagógico: Aulas & Exercícios ({serieGraficoFiltrada.length} dias)
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Quantidade de lições finalizadas e exercícios submetidos diariamente no período filtrado.
+                </p>
+                <div className="mt-4 h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={serieGraficoFiltrada}>
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar
+                        dataKey="exercicios"
+                        name="Exercícios Submetidos"
+                        fill="var(--primary)"
+                        radius={[6, 6, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="licoes"
+                        name="Lições Concluídas"
+                        fill="var(--success)"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
           </div>
 
-          {/* Linha 4: Desempenho por Tópico + Trilha de Auditoria Recente */}
-          <div className="grid gap-5 lg:grid-cols-12">
-            <section className="neu rounded-2xl border border-border bg-card p-6 lg:col-span-5">
-              <h2 className="font-display text-lg">Taxa de Acerto Global por Tópico</h2>
-              <p className="text-xs text-muted-foreground">
-                Consolidação das tentativas de todos os estudantes por unidade temática.
-              </p>
-              <div className="mt-5 space-y-4">
-                {(metricas?.desempenho_topicos || []).length === 0 ? (
-                  <p className="py-8 text-center text-xs italic text-muted-foreground">
-                    Ainda não há tentativas de exercícios registradas no banco.
-                  </p>
-                ) : (
-                  metricas.desempenho_topicos.map((item: any) => (
-                    <div key={item.topico} className="space-y-1.5">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span>{item.topico}</span>
-                        <span className="text-muted-foreground">
-                          {item.precisao}% acerto ({item.total} resp.)
-                        </span>
+          {/* Linha 4: Taxa de Acerto Global por Tópico com Filtros Condicionais */}
+          <section className="neu rounded-2xl border border-border bg-card p-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg">
+                  Taxa de Acerto Global por Tópico Musical
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Filtre condicionalmente os tópicos por faixa de domínio pedagógico ou ordene por criticidade.
+                </p>
+              </div>
+              <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold">
+                Exibindo {topicosFiltrados.length} tópico(s)
+              </span>
+            </div>
+
+            {/* Controles Condicionais de Tópicos */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+              <div className="relative md:col-span-5">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={buscaTopico}
+                  onChange={(e) => setBuscaTopico(e.target.value)}
+                  placeholder="Buscar tópico específico..."
+                  className="pl-9 text-xs h-9"
+                />
+              </div>
+
+              <div className="md:col-span-4">
+                <select
+                  value={filtroNivelTopico}
+                  onChange={(e) => setFiltroNivelTopico(e.target.value as any)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                >
+                  <option value="todos">Faixa de Precisão: Todas</option>
+                  <option value="critico">Crítico (&lt; 50% de acerto)</option>
+                  <option value="atencao">Em Atenção (50% a 74% de acerto)</option>
+                  <option value="adequado">Adequado / Dominado (&ge; 75% de acerto)</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-3">
+                <select
+                  value={ordenacaoTopico}
+                  onChange={(e) => setOrdenacaoTopico(e.target.value as any)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                >
+                  <option value="volume">Ordenar: Maior Volume</option>
+                  <option value="menor_precisao">Ordenar: Menor Precisão (Críticos)</option>
+                  <option value="maior_precisao">Ordenar: Maior Precisão</option>
+                  <option value="alfabetica">Ordenar: Alfabética (A-Z)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {topicosFiltrados.length === 0 ? (
+                <p className="col-span-2 py-8 text-center text-xs italic text-muted-foreground">
+                  Nenhum tópico encontrado para os critérios selecionados.
+                </p>
+              ) : (
+                topicosFiltrados.map((item: any) => {
+                  const p = Number(item.precisao) || 0;
+                  const barColor =
+                    p < 50 ? "bg-destructive" : p < 75 ? "bg-amber-500" : "bg-primary";
+                  const badgeLabel = p < 50 ? "Crítico" : p < 75 ? "Atenção" : "Adequado";
+
+                  return (
+                    <div
+                      key={item.topico}
+                      className="rounded-xl border border-border bg-muted/20 p-4 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs font-bold">
+                        <span className="truncate">{item.topico}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] uppercase",
+                              p < 50
+                                ? "bg-destructive/15 text-destructive"
+                                : p < 75
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-success/15 text-success",
+                            )}
+                          >
+                            {badgeLabel}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {p}% ({item.total} resp.)
+                          </span>
+                        </div>
                       </div>
                       <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${item.precisao}%` }}
+                          className={cn("h-full rounded-full transition-all", barColor)}
+                          style={{ width: `${p}%` }}
                         />
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            <section className="neu rounded-2xl border border-border bg-card p-6 lg:col-span-7">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-display text-lg">Últimos Eventos de Auditoria (Imutáveis)</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Rastreabilidade em tempo real de auditoria.
-                  </p>
-                </div>
-                <AlertTriangle className="size-5 text-gold" />
-              </div>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground">
-                      <th className="pb-2 font-bold">Evento / Ação</th>
-                      <th className="pb-2 font-bold">Usuário</th>
-                      <th className="pb-2 font-bold">IP Origem</th>
-                      <th className="pb-2 text-right font-bold">Data/Hora</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {(metricas?.ultimos_logs || []).map((log: any) => (
-                      <tr key={log.id} className="hover:bg-muted/30">
-                        <td className="py-2.5 font-mono font-bold text-primary">{log.action}</td>
-                        <td className="py-2.5 text-foreground">{log.usuario}</td>
-                        <td className="py-2.5 font-mono text-muted-foreground">{log.ip_address}</td>
-                        <td className="py-2.5 text-right text-muted-foreground">{log.timestamp}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
         </TabsContent>
 
         {/* ================= ABA 2: GESTÃO DE USUÁRIOS COM FILTROS E PAGINAÇÃO ================= */}
@@ -594,7 +979,7 @@ function AdminSistema() {
               </table>
             </div>
 
-            {/* Controles de Paginação */}
+            {/* Controles de Paginação de Usuários */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-4 text-xs">
               <span className="font-semibold text-muted-foreground">
                 Página {paginaAtual} de {totalPaginas} · Mostrando{" "}
@@ -636,6 +1021,251 @@ function AdminSistema() {
                   type="button"
                   disabled={paginaAtual >= totalPaginas}
                   onClick={() => setPaginaAtual(totalPaginas)}
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  Última »
+                </button>
+              </div>
+            </div>
+          </section>
+        </TabsContent>
+
+        {/* ================= ABA 3: TRILHA DE AUDITORIA (IMUTÁVEL) COM FILTROS ================= */}
+        <TabsContent value="auditoria" className="space-y-4 animate-in fade-in-50">
+          <section className="neu overflow-hidden rounded-2xl border border-border bg-card">
+            {/* Cabeçalho e Filtros da Auditoria */}
+            <div className="border-b border-border p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <FileSearch className="size-5 text-primary" />
+                  <div>
+                    <h2 className="font-display text-lg">
+                      Trilha de Auditoria e Rastreabilidade (Append-Only)
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Filtre eventos imutáveis por intervalo de datas, usuário associado (e-mail/nome/IP) e tipo de ação.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(auditUsuarioBusca ||
+                    auditTipoUsuario !== "todos" ||
+                    auditAcaoFiltro !== "todas" ||
+                    auditDataInicio ||
+                    auditDataFim) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuditUsuarioBusca("");
+                        setAuditTipoUsuario("todos");
+                        setAuditAcaoFiltro("todas");
+                        setAuditDataInicio("");
+                        setAuditDataFim("");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-bold hover:bg-muted"
+                    >
+                      <RotateCcw className="size-3.5" /> Limpar Filtros
+                    </button>
+                  )}
+                  <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-foreground">
+                    Exibindo {logsAuditoriaFiltrados.length} de {todosLogsAuditoria.length} evento(s)
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+                {/* Busca por Usuário Associado / IP */}
+                <div className="relative md:col-span-4">
+                  <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                    Usuário Associado / IP
+                  </label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={auditUsuarioBusca}
+                      onChange={(e) => setAuditUsuarioBusca(e.target.value)}
+                      placeholder="E-mail, nome ou IP de origem..."
+                      className="pl-9 text-xs h-10"
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro por Ação */}
+                <div className="md:col-span-3">
+                  <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                    Ação / Evento Registrado
+                  </label>
+                  <select
+                    value={auditAcaoFiltro}
+                    onChange={(e) => setAuditAcaoFiltro(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                  >
+                    <option value="todas">Todas as Ações ({acoesUnicasAuditoria.length})</option>
+                    {acoesUnicasAuditoria.map((acao) => (
+                      <option key={acao} value={acao}>
+                        {acao}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtro por Tipo de Vínculo */}
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                    Vínculo de Conta
+                  </label>
+                  <select
+                    value={auditTipoUsuario}
+                    onChange={(e) => setAuditTipoUsuario(e.target.value as any)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="autenticados">Autenticados</option>
+                    <option value="anonimos">Anônimo / Sistema</option>
+                  </select>
+                </div>
+
+                {/* Filtro por Data Inicial e Data Final */}
+                <div className="grid grid-cols-2 gap-2 md:col-span-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                      De (Data)
+                    </label>
+                    <Input
+                      type="date"
+                      value={auditDataInicio}
+                      onChange={(e) => setAuditDataInicio(e.target.value)}
+                      className="h-10 px-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                      Até (Data)
+                    </label>
+                    <Input
+                      type="date"
+                      value={auditDataFim}
+                      onChange={(e) => setAuditDataFim(e.target.value)}
+                      className="h-10 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela de Eventos de Auditoria */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left text-xs">
+                <thead>
+                  <tr className="bg-muted/50 uppercase tracking-wide text-muted-foreground">
+                    <th className="p-4 font-bold">Evento / Ação</th>
+                    <th className="p-4 font-bold">Usuário Associado</th>
+                    <th className="p-4 font-bold">IP de Origem</th>
+                    <th className="p-4 font-bold">Metadados (Payload)</th>
+                    <th className="p-4 text-right font-bold">Data / Hora (BRT)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {logsAuditoriaPaginados.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
+                        Nenhum registro de auditoria encontrado para os filtros informados.
+                      </td>
+                    </tr>
+                  ) : (
+                    logsAuditoriaPaginados.map((log) => {
+                      const payloadKeys = log.payload ? Object.keys(log.payload) : [];
+                      return (
+                        <tr key={log.id} className="transition-colors hover:bg-muted/25">
+                          <td className="p-4">
+                            <span
+                              className={cn(
+                                "inline-block rounded-md border px-2.5 py-1 font-mono text-[11px] font-bold",
+                                getAuditBadgeStyle(log.action),
+                              )}
+                            >
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-bold text-foreground">{log.usuario}</div>
+                            {log.nome_usuario && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {log.nome_usuario}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4 font-mono text-muted-foreground">{log.ip_address}</td>
+                          <td className="p-4 max-w-xs">
+                            {payloadKeys.length === 0 ? (
+                              <span className="text-muted-foreground/60">—</span>
+                            ) : (
+                              <code className="block truncate rounded bg-muted/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
+                                {JSON.stringify(log.payload)}
+                              </code>
+                            )}
+                          </td>
+                          <td className="p-4 text-right font-mono text-muted-foreground">
+                            {log.timestamp}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Controles de Paginação da Auditoria */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-4 text-xs">
+              <span className="font-semibold text-muted-foreground">
+                Página {paginaAuditoria} de {totalPaginasAuditoria} · Mostrando{" "}
+                {logsAuditoriaFiltrados.length === 0
+                  ? 0
+                  : (paginaAuditoria - 1) * AUDIT_ITEMS_PER_PAGE + 1}
+                –
+                {Math.min(
+                  paginaAuditoria * AUDIT_ITEMS_PER_PAGE,
+                  logsAuditoriaFiltrados.length,
+                )}{" "}
+                de {logsAuditoriaFiltrados.length} eventos
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={paginaAuditoria <= 1}
+                  onClick={() => setPaginaAuditoria(1)}
+                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  « Primeira
+                </button>
+                <button
+                  type="button"
+                  disabled={paginaAuditoria <= 1}
+                  onClick={() => setPaginaAuditoria((p) => Math.max(1, p - 1))}
+                  className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-4" /> Anterior
+                </button>
+
+                <span className="px-2 font-bold text-foreground">
+                  {paginaAuditoria} / {totalPaginasAuditoria}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={paginaAuditoria >= totalPaginasAuditoria}
+                  onClick={() =>
+                    setPaginaAuditoria((p) => Math.min(totalPaginasAuditoria, p + 1))
+                  }
+                  className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
+                >
+                  Próxima <ChevronRight className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={paginaAuditoria >= totalPaginasAuditoria}
+                  onClick={() => setPaginaAuditoria(totalPaginasAuditoria)}
                   className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
                 >
                   Última »
