@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,6 +19,9 @@ load_dotenv(dotenv_path=env_path)
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+if not DEBUG and not SECRET_KEY:
+    raise ImproperlyConfigured("A variável de ambiente DJANGO_SECRET_KEY é obrigatória.")
+
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.up.railway.app").split(",")
@@ -167,7 +171,8 @@ REST_FRAMEWORK = {
         "anon": "10/min",
         "user": "100/min",
         "auth_attempt": "5/min",
-        "password_reset": "3/hour"
+        "password_reset": "3/hour",
+        "ai_chat": "10/min" # Proteção contra abuso de cota e spam na API de IA (Gemini)
     },
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }
@@ -185,15 +190,18 @@ SIMPLE_JWT = {
 }
 
 # -----------------------------------------------------------------------------
-# COMUNICAÇÃO SEGURA (BREVO SMTP)
+# Envio de e-mail (BREVO HTTPS)
 # -----------------------------------------------------------------------------
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.environ.get("BREVO_SMTP_HOST", "smtp-relay.brevo.com")
-EMAIL_PORT = int(os.environ.get("BREVO_SMTP_PORT") or 587)
-EMAIL_HOST_USER = os.environ.get("BREVO_SMTP_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_PASSWORD", "")
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "seguranca@linus.com.br")
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+ANYMAIL = {
+    "BREVO_API_KEY": os.environ.get("BREVO_API_KEY", ""),
+}
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "nao-responda@linus.app.br",
+)
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 
 #----------------------------------------------------------------------------
 # CACHE EM MEMÓRIA E SESSÃO TEMPORÁRIA DE TRIAGEM (TTL: 30 MINUTOS) 

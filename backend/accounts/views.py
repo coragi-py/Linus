@@ -442,8 +442,18 @@ class AdminSystemMetricsView(APIView):
         from progress.models import ProgressoAula
 
         # Filtra usuários válidos (exclui contas anonimizadas pela LGPD)
-        valid_users = User.objects.exclude(email__endswith="@anon.com")
-        anonimizados_count = User.objects.filter(email__endswith="@anon.com").count()
+        valid_users = (
+            User.objects.exclude(email__endswith="@anon.com")
+            .exclude(email__endswith="@deleted.local")
+            .filter(anonymized_at__isnull=True)
+        )
+        anonimizados_count = (
+            User.objects.filter(
+                Q(email__endswith="@anon.com")
+                | Q(email__endswith="@deleted.local")
+                | Q(anonymized_at__isnull=False)
+            ).count()
+        )
 
         total_users = valid_users.count()
         active_users = valid_users.filter(is_active=True).count()
@@ -474,12 +484,18 @@ class AdminSystemMetricsView(APIView):
             "gravacoes_playground": Musica.objects.count(),
         }
 
-        # Série histórica dos últimos 7 dias
+        # Série histórica parametrizável (padrão 7 dias para compatibilidade; até 90 dias para o filtro do Dashboard)
+        try:
+            dias_param = int(request.query_params.get("days", 7))
+            num_dias = min(max(dias_param, 1), 90)
+        except (ValueError, TypeError):
+            num_dias = 7
+
         hoje = timezone.localdate()
         dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
         atividade_diaria = []
 
-        for i in range(6, -1, -1):
+        for i in range(num_dias - 1, -1, -1):
             dia_ref = hoje - timedelta(days=i)
             dia_label = f"{dias_semana[dia_ref.weekday()]} ({dia_ref.strftime('%d/%m')})"
 
@@ -494,6 +510,7 @@ class AdminSystemMetricsView(APIView):
 
             atividade_diaria.append({
                 "dia": dia_label,
+                "data_iso": dia_ref.strftime("%Y-%m-%d"),
                 "ativos": ativos_dia,
                 "novos_registros": novos_dia,
                 "licoes": aulas_dia,
@@ -517,10 +534,12 @@ class AdminSystemMetricsView(APIView):
             desempenho_topicos.append({
                 "topico": topico,
                 "total": tot,
+                "acertos": ac,
+                "erros": tot - ac,
                 "precisao": round((ac / tot) * 100, 1) if tot > 0 else 0,
             })
 
-        # Eventos de auditoria e segurança (últimos 7 dias + 10 registros mais recentes)
+        # Eventos de auditoria e segurança (últimos 7 dias nos cards + histórico para a aba de Auditoria)
         sete_dias_atras = timezone.now() - timedelta(days=7)
         eventos_7d = AuditLog.objects.filter(timestamp__gte=sete_dias_atras).count()
         falhas_login_7d = AuditLog.objects.filter(
@@ -528,16 +547,19 @@ class AdminSystemMetricsView(APIView):
             action__in=["FAILED_LOGIN_ATTEMPT", "BLOCKED_SUSPENDED_USER_LOGIN", "FAILED_2FA_ATTEMPT"],
         ).count()
 
-        ultimos_logs = [
-            {
+        ultimos_logs = []
+        for log in AuditLog.objects.select_related("user").order_by("-timestamp")[:500]:
+            dt_local = timezone.localtime(log.timestamp)
+            ultimos_logs.append({
                 "id": str(log.id),
                 "action": log.action,
                 "usuario": log.user.email if log.user else "Anônimo / Sistema",
+                "nome_usuario": log.user.nome if log.user and getattr(log.user, "nome", None) else "",
                 "ip_address": log.ip_address or "0.0.0.0",
-                "timestamp": timezone.localtime(log.timestamp).strftime("%d/%m/%Y %H:%M"),
-            }
-            for log in AuditLog.objects.select_related("user").order_by("-timestamp")[:10]
-        ]
+                "timestamp": dt_local.strftime("%d/%m/%Y %H:%M"),
+                "data_iso": dt_local.strftime("%Y-%m-%d"),
+                "payload": log.payload if isinstance(log.payload, dict) else {},
+            })
 
         return Response(
             {

@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
+from datetime import datetime
 from rest_framework.test import APIClient
 from rest_framework import status
 from unittest.mock import patch
@@ -141,3 +142,47 @@ class GamificationModuleTests(TestCase):
         self.assertEqual(resultado["enviados"], 0)
         self.assertEqual(resultado["falhas"], 1)
         self.assertTrue(AuditLog.objects.filter(action="STREAK_REMINDER_EMAIL_FAILED").exists())
+
+    def test_notificar_usuarios_em_risco_respeita_janela_das_20h_quando_agendado(self):
+        """Garante que o disparo agendado só envia às 20h e ignora outros horários."""
+        hoje = timezone.localdate()
+        ontem = hoje - timedelta(days=1)
+
+        GamificacaoPerfil.objects.create(
+            usuario=self.aluno,
+            streak_atual=4,
+            melhor_streak=4,
+            ultimo_acesso_estudo=ontem,
+        )
+
+        tz = timezone.get_current_timezone()
+        antes_das_20h = timezone.make_aware(datetime.combine(hoje, datetime.min.time()).replace(hour=14, minute=0), tz)
+        as_20h = timezone.make_aware(datetime.combine(hoje, datetime.min.time()).replace(hour=20, minute=0), tz)
+
+        with patch("django.utils.timezone.localtime", return_value=antes_das_20h):
+            res_cedo = StreakNotificationService.notificar_usuarios_em_risco(validar_horario=True)
+            self.assertEqual(res_cedo["enviados"], 0)
+            self.assertEqual(res_cedo["status"], "aguardando_janela_20h")
+            self.assertEqual(len(mail.outbox), 0)
+
+        with patch("django.utils.timezone.localtime", return_value=as_20h):
+            res_20h = StreakNotificationService.notificar_usuarios_em_risco(validar_horario=True)
+            self.assertEqual(res_20h["enviados"], 1)
+            self.assertEqual(len(mail.outbox), 1)
+
+    def test_notificar_usuarios_em_risco_nao_envia_email_duplicado_no_mesmo_dia(self):
+        """Se o aluno já recebeu o lembrete às 20h hoje, uma segunda execução não reenvia."""
+        ontem = timezone.localdate() - timedelta(days=1)
+        GamificacaoPerfil.objects.create(
+            usuario=self.aluno,
+            streak_atual=3,
+            melhor_streak=3,
+            ultimo_acesso_estudo=ontem,
+        )
+
+        res1 = StreakNotificationService.notificar_usuarios_em_risco()
+        self.assertEqual(res1["enviados"], 1)
+
+        res2 = StreakNotificationService.notificar_usuarios_em_risco()
+        self.assertEqual(res2["enviados"], 0)
+        self.assertEqual(len(mail.outbox), 1)

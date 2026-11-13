@@ -1,13 +1,17 @@
+import hmac
 import secrets
 import hashlib
 from datetime import timedelta
+from django.conf import settings
 from django.utils import timezone
 from accounts.models import TwoFactorAuthToken, PasswordResetToken
+
 
 class SecurityService:
     """
     Serviço centralizado para gestão criptográfica de tokens e OTPs.
     Nenhum token é salvo em plain-text no banco de dados.
+    Utiliza HMAC-SHA256 com a SECRET_KEY do servidor e comparação em tempo constante.
     """
 
     @staticmethod
@@ -16,7 +20,12 @@ class SecurityService:
 
     @staticmethod
     def hash_token(token: str) -> str:
-        return hashlib.sha256(token.encode('utf-8')).hexdigest()
+        secret = getattr(settings, "SECRET_KEY", None) or "linus-fallback-secret-key"
+        return hmac.new(
+            key=secret.encode("utf-8"),
+            msg=token.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).hexdigest()
 
     @classmethod
     def create_2fa_token(cls, user) -> str:
@@ -44,7 +53,8 @@ class SecurityService:
         if not token_obj or not token_obj.is_valid():
             return False
 
-        if token_obj.token_hash == hashed_otp:
+        # Comparação em tempo constante (proteção contra Timing Attacks)
+        if hmac.compare_digest(token_obj.token_hash, hashed_otp):
             token_obj.is_used = True
             token_obj.save(update_fields=['is_used'])
             return True
@@ -79,7 +89,8 @@ class SecurityService:
         if not token_obj or not token_obj.is_valid():
             return False
 
-        if token_obj.token_hash == hashed_token:
+        # Comparação em tempo constante (proteção contra Timing Attacks)
+        if hmac.compare_digest(token_obj.token_hash, hashed_token):
             token_obj.is_used = True
             token_obj.save(update_fields=['is_used'])
             return True

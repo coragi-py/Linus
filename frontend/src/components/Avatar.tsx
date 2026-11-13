@@ -10,6 +10,7 @@ type AvatarOptions = {
   accessories: string[]; 
   mouth: string[];
   eyes: string[];
+  eyebrows: string[];
 };
 
 const API_URL = `${
@@ -26,6 +27,7 @@ export function Avatar() {
     accessories: ['none'],
     mouth: ['smile'],
     eyes: ['default'],
+    eyebrows: ['default'],
   });
 
   const avatarUri = useMemo(() => {
@@ -39,6 +41,7 @@ export function Avatar() {
         accessoriesProbability: options.accessories[0] === 'none' ? 0 : 100,
         mouth: options.mouth,
         eyes: options.eyes,
+        eyebrows: options.eyebrows,
         size: 160,
         radius: 20,
         backgroundColor: ['e2e8f0']
