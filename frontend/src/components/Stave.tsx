@@ -140,7 +140,9 @@ export function Stave({
     }
   }, [data, notes, sequential, width, height, scale, clef]);
 
-  return <div ref={containerRef} className={`flex justify-center ${className}`} />;
+  return (
+    <div ref={containerRef} className={`vex-stave-container flex justify-center ${className}`} />
+  );
 }
 
 export default Stave;

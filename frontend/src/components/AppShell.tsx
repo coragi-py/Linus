@@ -1,9 +1,9 @@
-// Adicionando avatar escolhido na barra superior e alterando o "Usuário" para "Aluno", por Anny em 12/10.
+// Adicionando avatar escolhido na barra superior, papel "Aluno" e seletor de Tema Escuro/Claro (RNF03).
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { createAvatar } from "@dicebear/core";
 import { bottts, avataaars } from "@dicebear/collection";
 import { Link, useRouterState, Navigate } from "@tanstack/react-router";
-import { Flame, LogOut, Sparkles, UserCircle, Settings } from "lucide-react";
+import { Flame, LogOut, Sparkles, Settings, Sun, Moon } from "lucide-react";
 import { LinusLogo } from "./Logo";
 import { AiAssistant } from "./AiAssistant";
 import { useLinus, ROLE_LABEL } from "@/context/LinusContext";
@@ -17,10 +17,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const API_URL = `${
-  (import.meta.env.VITE_API_URL || "http://localhost:8000")
-    .replace(/\/+$/, "")
-}/api/v1`;
+const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+)}/api/v1`;
+
+const THEME_STORAGE_KEY = "linus.theme";
 
 const NAV: { to: string; label: string; roles: string[] }[] = [
   { to: "/trilha", label: "Trilha", roles: ["estudante", "usuario"] },
@@ -44,22 +46,43 @@ export function getHomeByRole(role?: string): string {
 export function AppShell({ children }: { children: ReactNode }) {
   const { state, ready, logout } = useLinus();
   const [aiOpen, setAiOpen] = useState(false);
-
   const [avatarOptions, setAvatarOptions] = useState<any>(null);
+
+  // Estado e persistência local do Tema (Claro / Escuro)
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "dark" || saved === "light") {
+      return saved === "dark";
+    }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem(THEME_STORAGE_KEY, "light");
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
 
   useEffect(() => {
     const fetchAvatar = async () => {
-      // Só busca o avatar se o usuário estiver logado
-      if (!state.loggedIn) return; 
-      
+      if (!state.loggedIn) return;
+
       try {
         const token = localStorage.getItem("access_token");
         if (!token) return;
-        
+
         const response = await fetch(`${API_URL}/auth/me/`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data.avatar_options && Object.keys(data.avatar_options).length > 0) {
@@ -70,32 +93,35 @@ export function AppShell({ children }: { children: ReactNode }) {
         console.error("Erro ao buscar avatar", error);
       }
     };
-    fetchAvatar();
-  }, [state.loggedIn]); 
+    void fetchAvatar();
+  }, [state.loggedIn]);
 
   const avatarUri = useMemo(() => {
     try {
-      const options = avatarOptions || { seed: state.name || 'linus', collection: 'bottts' }; 
-      const selectedCollection = options.collection === 'avataaars' ? avataaars : bottts;
+      const options = avatarOptions || { seed: state.name || "linus", collection: "bottts" };
+      const selectedCollection = options.collection === "avataaars" ? avataaars : bottts;
 
       const avatar = createAvatar(selectedCollection, {
         ...options,
-        // Garantimos que a imagem pequena obedeça à mesma regra de esconder óculos
-        accessories: options.accessories?.[0] === 'none' ? [] : options.accessories,
-        accessoriesProbability: options.accessories?.[0] === 'none' ? 0 : 100,
+        accessories: options.accessories?.[0] === "none" ? [] : options.accessories,
+        accessoriesProbability: options.accessories?.[0] === "none" ? 0 : 100,
         size: 48,
         radius: 50,
-        backgroundColor: ['e2e8f0']
+        backgroundColor: ["e2e8f0"],
       } as any);
-      
+
       return avatar.toDataUri();
     } catch (error) {
       console.error("Erro ao gerar avatar no Header:", error);
-      const fallbackAvatar = createAvatar(bottts, { seed: 'erro', size: 32, backgroundColor: ['e2e8f0'] });
+      const fallbackAvatar = createAvatar(bottts, {
+        seed: "erro",
+        size: 32,
+        backgroundColor: ["e2e8f0"],
+      });
       return fallbackAvatar.toDataUri();
     }
   }, [avatarOptions, state.name]);
-  
+
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // 1. CONTROLE DE HIDRATAÇÃO
@@ -117,12 +143,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Regra B: Validações para usuários LOGADOS
   if (state.loggedIn) {
-    // Regra B.1: Se tentar acessar Landing Page, Login ou Registro, envia para a Home do seu papel
     if (pathname === "/" || pathname === "/login" || pathname === "/registro") {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.2: Se for Admin Conteúdo ou Admin Sistema e cair em /painel, redireciona para a Home do Admin
     if (
       pathname === "/painel" &&
       ["admin-conteudo", "conteudo", "admin-sistema", "sistema"].includes(currentRole)
@@ -130,7 +154,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.3 (RBAC): Bloqueia perfis sem permissão tentando acessar Admin Conteúdo
     if (
       pathname.startsWith("/admin/conteudo") &&
       !["admin-conteudo", "conteudo"].includes(currentRole)
@@ -138,7 +161,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.4 (RBAC): Bloqueia perfis sem permissão tentando acessar Admin Sistema
     if (
       pathname.startsWith("/admin/sistema") &&
       !["admin-sistema", "sistema"].includes(currentRole)
@@ -152,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (isLesson) return <>{children}</>;
 
-  // Estrutura deslogada (Landing page, Triagem, Termos)
+  // Estrutura deslogada (Landing page, Triagem, Termos, Login, Registro)
   if (!state.loggedIn && isPublicRoute) {
     return (
       <div className="min-h-screen">
@@ -168,6 +190,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
+                title={isDark ? "Modo Claro" : "Modo Escuro"}
+                className="focus-ring flex size-9 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted"
+              >
+                {isDark ? <Sun className="size-4 text-gold" /> : <Moon className="size-4" />}
+              </button>
+
               <Link
                 to="/login"
                 className="focus-ring rounded-md border border-primary px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
@@ -220,7 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2">
             {(currentRole === "estudante" || currentRole === "usuario") && (
-              <div className="mr-2 hidden items-center gap-3 sm:flex">
+              <div className="mr-1 hidden items-center gap-3 sm:flex">
                 <span
                   className="neu-sm flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold"
                   title="Ofensiva diária"
@@ -230,6 +262,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
+              title={isDark ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+              className="focus-ring flex size-9 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-neu-sm transition-colors hover:bg-muted"
+            >
+              {isDark ? <Sun className="size-4 text-gold" /> : <Moon className="size-4" />}
+            </button>
 
             <button
               type="button"
@@ -245,16 +287,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger className="focus-ring flex items-center gap-2 rounded-lg p-1.5 outline-none transition-colors hover:bg-muted">
                   <div className="hidden flex-col items-end md:flex">
                     <span className="text-[10px] font-bold uppercase text-primary/70">
-                      {currentRole === "usuario" ? "ALUNO" : (ROLE_LABEL?.[currentRole] || currentRole.replace("-", " "))}
+                      {currentRole === "usuario"
+                        ? "ALUNO"
+                        : ROLE_LABEL?.[currentRole] || currentRole.replace("-", " ")}
                     </span>
                     <span className="text-xs font-bold leading-tight truncate max-w-[120px]">
                       {state.name ? state.name.split(" ")[0] : "Usuário"}
                     </span>
                   </div>
-                  <img 
-                    src={avatarUri} 
-                    alt="Avatar" 
-                    className="size-16 rounded-full border border-primary/20 bg-background shadow-sm" 
+                  <img
+                    src={avatarUri}
+                    alt="Avatar"
+                    className="size-12 sm:size-14 rounded-full border border-primary/20 bg-background shadow-sm"
                   />
                 </DropdownMenuTrigger>
 
@@ -266,6 +310,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                       <Settings className="size-4 text-muted-foreground" />
                       <span className="font-medium">Perfil e Privacidade</span>
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={toggleTheme}
+                    className="flex cursor-pointer items-center gap-2 py-2"
+                  >
+                    {isDark ? (
+                      <Sun className="size-4 text-gold" />
+                    ) : (
+                      <Moon className="size-4 text-muted-foreground" />
+                    )}
+                    <span className="font-medium">{isDark ? "Tema Claro" : "Tema Escuro"}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

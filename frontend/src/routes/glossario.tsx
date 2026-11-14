@@ -6,28 +6,7 @@ import { Input } from "@/components/ui/input";
 import { GlossaryDiagram } from "@/components/GlossaryDiagram";
 import { cn } from "@/lib/utils";
 
-
-const API_URL = `${
-  (import.meta.env.VITE_API_URL || "http://localhost:8000")
-    .replace(/\/+$/, "")
-}/api/v1`;
-
 export const Route = createFileRoute("/glossario")({
-  head: () => ({
-    meta: [
-      { title: "Glossário Visual de Música — Linus" },
-      {
-        name: "description",
-        content:
-          "Consulte termos e símbolos musicais — pautas, figuras de duração e acidentes — com definições e diagramas vetoriais.",
-      },
-      { property: "og:title", content: "Glossário Visual de Música — Linus" },
-      {
-        property: "og:description",
-        content: "Pautas, figuras e acidentes explicados com texto e diagramas, sem áudio.",
-      },
-    ],
-  }),
   component: Dicionario,
 });
 
@@ -39,55 +18,65 @@ type GlossaryItem = {
   category: string;
 };
 
+const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+)}/api/v1`;
+
 const CATEGORIAS = ["Todas", "Pautas", "Figuras", "Acidentes"] as const;
 
 function Dicionario() {
   const [busca, setBusca] = useState("");
   const [cat, setCat] = useState<(typeof CATEGORIAS)[number]>("Todas");
-
   const [dadosGlossario, setDadosGlossario] = useState<GlossaryItem[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    // Busca o token no navegador
-    const token = localStorage.getItem("access_token");
+    const carregarGlossario = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const headers: Record<string, string> = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
 
-    fetch(`${API_URL}/glossary/`, {
-      method: "GET",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
-    })
-      .then((resposta) => {
+        // Tenta /glossary/termos/ e faz fallback para /glossary/
+        let resposta = await fetch(`${API_URL}/glossary/termos/`, { headers });
         if (!resposta.ok) {
-          throw new Error(`Erro do servidor: ${resposta.status}`);
+          resposta = await fetch(`${API_URL}/glossary/`, { headers });
         }
-        return resposta.json();
-      })
-      .then((dados) => {
-        const lista = Array.isArray(dados) ? dados : dados.results || [];
-        const normalizado: GlossaryItem[] = lista.map((item: any) => ({
-          id: item.id,
-          term: item.term || item.termo || "",
-          definition: item.definition || item.definicao || "",
-          diagram: item.diagram || item.figura_svg || "",
-          category: item.category || item.categoria || "",
+
+        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+
+        const dados = await resposta.json();
+        const lista = Array.isArray(dados)
+          ? dados
+          : Array.isArray(dados?.results)
+            ? dados.results
+            : [];
+
+        const normalizado: GlossaryItem[] = lista.map((item: any, idx: number) => ({
+          id: String(item?.id ?? idx),
+          term: String(item?.term || item?.termo || ""),
+          definition: String(item?.definition || item?.definicao || ""),
+          diagram: String(item?.diagram ?? item?.figura_svg ?? "").trim(),
+          category: String(item?.category || item?.categoria || "Geral"),
         }));
+
         setDadosGlossario(normalizado);
-        setCarregando(false);
-      })
-      .catch((erro) => {
+      } catch (erro) {
         console.error("Erro ao carregar o glossário:", erro);
+      } finally {
         setCarregando(false);
-      });
+      }
+    };
+
+    void carregarGlossario();
   }, []);
 
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
 
     return dadosGlossario.filter((t) => {
-      const termoCat = t.category.toLowerCase();
+      const termoCat = (t.category || "").toLowerCase();
 
       const categoriaValida =
         cat === "Todas" ||
@@ -101,7 +90,9 @@ function Dicionario() {
         termoCat.includes(cat.toLowerCase());
 
       const buscaValida =
-        q === "" || t.term.toLowerCase().includes(q) || t.definition.toLowerCase().includes(q);
+        q === "" ||
+        (t.term || "").toLowerCase().includes(q) ||
+        (t.definition || "").toLowerCase().includes(q);
 
       return categoriaValida && buscaValida;
     });
@@ -159,7 +150,7 @@ function Dicionario() {
       </div>
 
       {carregando ? (
-        <p className="neu p-8 text-center text-muted-foreground"> Carregando termos musicais... </p>
+        <p className="neu p-8 text-center text-muted-foreground">Carregando termos musicais...</p>
       ) : resultados.length === 0 ? (
         <p className="neu p-8 text-center text-muted-foreground">
           Nenhum termo encontrado para “{busca}”.
@@ -168,10 +159,10 @@ function Dicionario() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {resultados.map((t) => (
             <article key={t.id} className="neu flex flex-col p-5">
-              <div className="neu-inset mb-4 flex min-h-24 items-center justify-center p-3">
-                {t.diagram?.trim().startsWith("<svg") ? (
+              <div className="neu-inset mb-4 flex min-h-28 items-center justify-center overflow-hidden p-3">
+                {t.diagram.startsWith("<svg") ? (
                   <div
-                    className="size-full flex items-center justify-center [&>svg]:size-full [&>svg]:max-h-20"
+                    className="glossary-diagram-container flex size-full items-center justify-center [&>svg]:max-h-24 [&>svg]:size-full"
                     dangerouslySetInnerHTML={{ __html: t.diagram }}
                   />
                 ) : (

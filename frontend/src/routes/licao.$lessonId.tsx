@@ -28,8 +28,7 @@ type Status = "idle" | "correct" | "wrong";
 function LessonPage() {
   const { lessonId } = Route.useParams();
   const navigate = useNavigate();
-  const { state, findLessonById, completeLesson, registerAnswer } =
-    useLinus();
+  const { state, findLessonById, completeLesson, registerAnswer } = useLinus();
 
   const found = useMemo(() => findLessonById(lessonId), [findLessonById, lessonId]);
 
@@ -52,7 +51,6 @@ function LessonPage() {
     setFinished(false);
     setAcertos(0);
     startTimeRef.current = Date.now();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId]);
 
   useEffect(() => {
@@ -108,7 +106,6 @@ function LessonPage() {
     });
     void playFeedback(ok);
     if (ok) setAcertos((a) => a + 1);
-    
   }
 
   function avancar() {
@@ -191,7 +188,6 @@ function LessonPage() {
               <BookOpen className="size-3.5" /> Rever Teoria
             </button>
           )}
-
         </div>
       </header>
 
@@ -411,13 +407,13 @@ function LessonPage() {
       )}
 
       {/* Barra de confirmação inferior */}
-      {etapaAula === "pratica" && status !== "idle" && (
+      {status !== "idle" && (
         <div
           className={cn(
-            "fixed bottom-0 left-0 right-0 border-t-2 p-5",
+            "fixed bottom-0 left-0 right-0 z-30 border-t-2 p-5 backdrop-blur-md",
             status === "correct"
-              ? "border-success bg-accent"
-              : "border-destructive bg-destructive/10",
+              ? "border-success bg-accent dark:bg-card/95"
+              : "border-destructive bg-destructive/10 dark:bg-card/95",
           )}
           role="status"
           aria-live="assertive"
@@ -426,19 +422,21 @@ function LessonPage() {
             <div className="flex-1">
               <p
                 className={cn(
-                  "font-display text-xl",
-                  status === "correct" ? "text-success-foreground" : "text-destructive",
+                  "font-display text-xl font-bold",
+                  status === "correct"
+                    ? "text-success-foreground dark:text-success"
+                    : "text-destructive",
                 )}
               >
                 {status === "correct" ? "Muito bem!" : `Ainda não. Resposta: ${ex.answer}`}
               </p>
-              <p className="mt-1 text-sm text-foreground">{ex.explanation}</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{ex.explanation}</p>
             </div>
             <button
               type="button"
               onClick={avancar}
               className={cn(
-                "focus-ring rounded-lg px-8 py-3.5 font-display text-lg shadow-neu-sm active:translate-y-0.5",
+                "focus-ring rounded-lg px-8 py-3.5 font-display text-lg font-bold shadow-neu-sm active:translate-y-0.5",
                 status === "correct"
                   ? "bg-success text-success-foreground"
                   : "bg-primary text-primary-foreground",
