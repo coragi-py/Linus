@@ -32,7 +32,7 @@ function Painel() {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <SectionTitle
         eyebrow="Painel pessoal"
-        title={`Bem-vindo de volta, ${state.name.split(" ")[0]}`}
+        title={`Olá, ${state.name.split(" ")[0]}!`}
         description="Confira como está o seu ritmo de estudos e quais são os próximos passos."
       />
 
