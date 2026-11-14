@@ -63,7 +63,7 @@ export const PIANO_KEYS: PianoKey[] = Array.from({ length: 24 }, (_, i) => {
   return {
     note: `${pitch}${octave}`,
     vex: `${pitch.toLowerCase()}/${octave}`,
-    label: NOTE_NAMES_PT[pitch]!,
+    label: `${NOTE_NAMES_PT[pitch]!}${octave}`,
     keyboard: KEY_ROW[i]!,
     isBlack: pitch.includes("#"),
     octave,
@@ -85,8 +85,9 @@ export function noteToVex(note: string): string {
 }
 
 export function noteLabelPt(note: string): string {
+  const octave = note.slice(-1);
   const pitch = note.slice(0, -1);
-  return NOTE_NAMES_PT[pitch] ?? pitch;
+  return `${NOTE_NAMES_PT[pitch] ?? pitch}${octave}`;
 }
 
 export const INTERVALOS_PT: { nome: string; semitons: number }[] = [
