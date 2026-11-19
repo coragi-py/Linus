@@ -423,6 +423,23 @@ class ChangePasswordView(APIView):
         return Response({"message": "Senha atualizada com sucesso."}, status=status.HTTP_200_OK)
     
 
+def _registrar_consulta_admin_com_cooldown(request, action: str, payload: dict = None, minutos_cooldown: int = 5):
+    """
+    Registra eventos de consulta/leitura administrativa (LGPD - rastreabilidade de acesso)
+    com janela de deduplicação para evitar spam de logs em recarregamentos sucessivos.
+    """
+    from audit.models import AuditLog
+
+    limite_tempo = timezone.now() - timedelta(minutes=minutos_cooldown)
+    ja_registrado_recentemente = AuditLog.objects.filter(
+        user=request.user,
+        action=action,
+        timestamp__gte=limite_tempo,
+    ).exists()
+
+    if not ja_registrado_recentemente:
+        AuditService.log_event(request, request.user, action, payload or {})
+
 class AdminSystemMetricsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -612,6 +629,12 @@ class AdminSystemMetricsView(APIView):
                 "timestamp": dt_local.strftime("%d/%m/%Y %H:%M"),
                 "data_iso": dt_local.strftime("%Y-%m-%d"),
             })
+        
+        _registrar_consulta_admin_com_cooldown(
+            request,
+            "ADMIN_VIEWED_AUDIT_LOGS",
+            {"total_logs_retornados": len(ultimos_logs)},
+        )
 
         return Response(
             {
@@ -665,6 +688,13 @@ class AdminSystemUsersView(APIView):
             "role": reverse_role_map.get(u.role, "estudante"),
             "ativo": bool(u.is_active),
         } for u in users]
+        
+        _registrar_consulta_admin_com_cooldown(
+            request,
+            "ADMIN_VIEWED_USERS_LIST",
+            {"total_usuarios_listados": len(data)},
+        )
+
         return Response(data, status=status.HTTP_200_OK)
 
     def patch(self, request, user_id=None):
@@ -719,6 +749,7 @@ class AdminSystemUsersView(APIView):
                     "ADMIN_TOGGLED_USER_STATUS",
                     {"admin_id": str(request.user.id), "is_active": target_user.is_active},
                 )
+            
 
             return Response({
                 "message": "Usuário atualizado com sucesso.",
