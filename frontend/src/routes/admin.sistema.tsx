@@ -16,6 +16,10 @@ import {
   SlidersHorizontal,
   FileSearch,
   PieChart,
+  Eye,
+  EyeOff,
+  UserCheck,
+  X,
 } from "lucide-react";
 import {
   Bar,
@@ -76,7 +80,6 @@ const AUDIT_ITEMS_PER_PAGE = 20;
 const DATE_INPUT_CLASS =
   "block h-10 w-full min-w-[140px] rounded-md border border-input bg-background px-3 py-2 text-xs font-medium text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
-// Extrai YYYY-MM-DD mesmo se data_iso não vier preenchido do backend
 function extractIsoDate(dataIso?: string, timestampStr?: string): string {
   if (dataIso && /^\d{4}-\d{2}-\d{2}$/.test(dataIso)) return dataIso;
   if (timestampStr) {
@@ -88,6 +91,47 @@ function extractIsoDate(dataIso?: string, timestampStr?: string): string {
   return "";
 }
 
+function isAlreadyMasked(value?: string): boolean {
+  if (!value) return true;
+  const v = value.trim();
+  return (
+    v === "********" ||
+    v.startsWith("anon_") ||
+    v.endsWith("@anon.com") ||
+    v.endsWith("@deleted.local")
+  );
+}
+
+function maskName(nome?: string): string {
+  if (!nome || isAlreadyMasked(nome)) return "********";
+  const parts = nome.trim().split(/\s+/);
+  return parts
+    .map((part) => {
+      if (part.length <= 1) return `${part}*`;
+      return `${part[0]}${"*".repeat(Math.min(part.length - 1, 4))}`;
+    })
+    .join(" ");
+}
+
+function maskEmail(email?: string): string {
+  if (!email) return "********";
+  const lower = email.trim().toLowerCase();
+  if (lower === "anônimo / sistema" || lower === "anonimo / sistema" || isAlreadyMasked(lower)) {
+    return email;
+  }
+  const [localPart, domain] = lower.split("@");
+  if (!domain) return `${lower[0] || "*"}***`;
+  const prefix = localPart.length <= 1 ? localPart : localPart.slice(0, 2);
+  return `${prefix}***@${domain}`;
+}
+
+function normalizeRole(role: string): Role {
+  if (role === "admin-conteudo") return "conteudo";
+  if (role === "admin-sistema") return "sistema";
+  if (role === "usuario") return "estudante";
+  return (role as Role) || "estudante";
+}
+
 function getAuditBadgeStyle(action: string): string {
   const act = (action || "").toUpperCase();
   if (act.includes("FAILED") || act.includes("BLOCKED") || act.includes("DELETED")) {
@@ -95,6 +139,9 @@ function getAuditBadgeStyle(action: string): string {
   }
   if (act.includes("LGPD") || act.includes("CONSENT") || act.includes("ANONYMIZED")) {
     return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
+  }
+  if (act.includes("VIEWED") || act.includes("EXPORTED") || act.includes("READ")) {
+    return "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
   }
   if (act.includes("ADMIN") || act.includes("CREATED") || act.includes("UPDATED")) {
     return "bg-primary/15 text-primary border-primary/30";
@@ -105,10 +152,25 @@ function getAuditBadgeStyle(action: string): string {
   return "bg-muted text-foreground border-border";
 }
 
+function getAuditCategoryLabel(action: string): string {
+  const act = (action || "").toUpperCase();
+  if (act.includes("VIEWED") || act.includes("EXPORTED")) return "Consulta / Acesso a Dados";
+  if (act.includes("LGPD") || act.includes("CONSENT") || act.includes("ANONYMIZED"))
+    return "Privacidade / LGPD";
+  if (act.includes("FAILED") || act.includes("BLOCKED") || act.includes("2FA"))
+    return "Segurança / Acesso";
+  if (act.includes("ADMIN")) return "Administração";
+  return "Evento do Sistema";
+}
+
 function AdminSistema() {
   const [usuarios, setUsuarios] = useState<RealUser[]>([]);
   const [metricas, setMetricas] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Oculta dados pessoais por padrão para evitar exposição em apresentações/telas
+  const [ocultarDados, setOcultarDados] = useState(true);
+  const [usuarioSelecionadoModal, setUsuarioSelecionadoModal] = useState<RealUser | null>(null);
 
   // ================= ESTADOS: FILTROS DO DASHBOARD =================
   const [periodoDashboard, setPeriodoDashboard] = useState<"7d" | "15d" | "30d" | "custom">("7d");
@@ -136,6 +198,7 @@ function AdminSistema() {
   // ================= ESTADOS: ABA DE AUDITORIA =================
   const [auditUsuarioBusca, setAuditUsuarioBusca] = useState("");
   const [auditAcaoFiltro, setAuditAcaoFiltro] = useState("todas");
+  const [auditCategoriaFiltro, setAuditCategoriaFiltro] = useState("todas");
   const [auditDataInicio, setAuditDataInicio] = useState("");
   const [auditDataFim, setAuditDataFim] = useState("");
   const [paginaAuditoria, setPaginaAuditoria] = useState(1);
@@ -177,15 +240,13 @@ function AdminSistema() {
     void fetchData();
   }, []);
 
-  // Reseta página de usuários ao mudar filtros
   useEffect(() => {
     setPaginaAtual(1);
   }, [buscaTexto, filtroStatus, filtroRole]);
 
-  // Reseta página de auditoria ao mudar filtros
   useEffect(() => {
     setPaginaAuditoria(1);
-  }, [auditUsuarioBusca, auditAcaoFiltro, auditDataInicio, auditDataFim]);
+  }, [auditUsuarioBusca, auditAcaoFiltro, auditCategoriaFiltro, auditDataInicio, auditDataFim]);
 
   // ================= LÓGICA DE FILTRAGEM: DASHBOARD =================
   const serieGraficoFiltrada = useMemo(() => {
@@ -236,7 +297,11 @@ function AdminSistema() {
     const termo = buscaTopico.trim().toLowerCase();
 
     const filtrada = lista.filter((item) => {
-      const matchNome = !termo || String(item.topico || "").toLowerCase().includes(termo);
+      const matchNome =
+        !termo ||
+        String(item.topico || "")
+          .toLowerCase()
+          .includes(termo);
       const p = Number(item.precisao) || 0;
 
       const matchNivel =
@@ -251,8 +316,7 @@ function AdminSistema() {
     filtrada.sort((a, b) => {
       if (ordenacaoTopico === "menor_precisao") return a.precisao - b.precisao;
       if (ordenacaoTopico === "maior_precisao") return b.precisao - a.precisao;
-      if (ordenacaoTopico === "alfabetica")
-        return String(a.topico).localeCompare(String(b.topico));
+      if (ordenacaoTopico === "alfabetica") return String(a.topico).localeCompare(String(b.topico));
       return (b.total || 0) - (a.total || 0);
     });
 
@@ -274,15 +338,7 @@ function AdminSistema() {
         (filtroStatus === "ativos" && u.ativo) ||
         (filtroStatus === "suspensos" && !u.ativo);
 
-      const normalizedRole =
-        u.role === "admin-conteudo"
-          ? "conteudo"
-          : u.role === "admin-sistema"
-            ? "sistema"
-            : u.role === "usuario"
-              ? "estudante"
-              : u.role;
-
+      const normalizedRole = normalizeRole(u.role);
       const matchRole = filtroRole === "todos" || normalizedRole === filtroRole;
 
       return matchTexto && matchStatus && matchRole;
@@ -308,6 +364,14 @@ function AdminSistema() {
     return Array.from(setAcoes).sort();
   }, [todosLogsAuditoria]);
 
+  const categoriasUnicasAuditoria = useMemo(() => {
+    const setCats = new Set<string>();
+    todosLogsAuditoria.forEach((log) => {
+      setCats.add(getAuditCategoryLabel(log.action));
+    });
+    return Array.from(setCats).sort();
+  }, [todosLogsAuditoria]);
+
   const logsAuditoriaFiltrados = useMemo(() => {
     const termoUsuario = auditUsuarioBusca.trim().toLowerCase();
 
@@ -316,24 +380,31 @@ function AdminSistema() {
       const nomeStr = (log.nome_usuario || "").toLowerCase();
       const ipStr = (log.ip_address || "").toLowerCase();
 
-      // 1. Filtro por Usuário associado (e-mail, nome ou IP)
       const matchUsuario =
         !termoUsuario ||
         usuarioStr.includes(termoUsuario) ||
         nomeStr.includes(termoUsuario) ||
         ipStr.includes(termoUsuario);
 
-      // 2. Filtro por Ação
       const matchAcao = auditAcaoFiltro === "todas" || log.action === auditAcaoFiltro;
+      const matchCategoria =
+        auditCategoriaFiltro === "todas" ||
+        getAuditCategoryLabel(log.action) === auditCategoriaFiltro;
 
-      // 3. Filtro por Data (Início e Fim)
       const dataLogIso = extractIsoDate(log.data_iso, log.timestamp);
       const matchDataInicio = !auditDataInicio || (dataLogIso && dataLogIso >= auditDataInicio);
       const matchDataFim = !auditDataFim || (dataLogIso && dataLogIso <= auditDataFim);
 
-      return matchUsuario && matchAcao && matchDataInicio && matchDataFim;
+      return matchUsuario && matchAcao && matchCategoria && matchDataInicio && matchDataFim;
     });
-  }, [todosLogsAuditoria, auditUsuarioBusca, auditAcaoFiltro, auditDataInicio, auditDataFim]);
+  }, [
+    todosLogsAuditoria,
+    auditUsuarioBusca,
+    auditAcaoFiltro,
+    auditCategoriaFiltro,
+    auditDataInicio,
+    auditDataFim,
+  ]);
 
   const totalPaginasAuditoria = Math.max(
     1,
@@ -368,6 +439,9 @@ function AdminSistema() {
 
       toast.success("Permissões atualizadas com sucesso.");
       setUsuarios((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+      setUsuarioSelecionadoModal((prev) =>
+        prev && prev.id === userId ? { ...prev, role: newRole } : prev,
+      );
     } catch (error: any) {
       toast.error(error.message || "Falha ao atualizar papel do usuário.");
     }
@@ -397,6 +471,9 @@ function AdminSistema() {
       setUsuarios((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, ativo: !currentStatus } : u)),
       );
+      setUsuarioSelecionadoModal((prev) =>
+        prev && prev.id === userId ? { ...prev, ativo: !currentStatus } : prev,
+      );
     } catch (error: any) {
       toast.error(error.message || "Falha ao alterar status.");
     }
@@ -405,9 +482,7 @@ function AdminSistema() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="animate-pulse font-bold text-muted-foreground">
-          Carregando informações...
-        </p>
+        <p className="animate-pulse font-bold text-muted-foreground">Carregando informações...</p>
       </div>
     );
   }
@@ -415,33 +490,64 @@ function AdminSistema() {
   const totais = metricas?.totais || {};
   const acervo = metricas?.acervo || {};
   const papeis = metricas?.distribuicao_papeis || {};
-  const taxaAtivos =
-    totais.usuarios > 0 ? Math.round((totais.ativos / totais.usuarios) * 100) : 0;
+  const taxaAtivos = totais.usuarios > 0 ? Math.round((totais.ativos / totais.usuarios) * 100) : 0;
 
   return (
     <div className="mx-auto min-h-screen max-w-6xl px-4 py-12">
-      <SectionTitle
-        eyebrow="Administração Central"
-        title="Painel de Controle do Sistema"
-        description="Acompanhe indicadores globais, demografia etária, telemetria pedagógica, gestão de usuários e trilha de auditoria."
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <SectionTitle
+          eyebrow="Administração Central"
+          title="Painel de Controle do Sistema"
+          description="Acompanhe indicadores globais, demografia etária, telemetria pedagógica, gestão de usuários e trilha de auditoria."
+        />
 
-      <Tabs defaultValue="dashboard" className="mt-6 w-full">
+        <button
+          type="button"
+          onClick={() => setOcultarDados((prev) => !prev)}
+          className={cn(
+            "focus-ring inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-neu-sm transition-colors",
+            ocultarDados
+              ? "border-primary/40 bg-primary-soft text-primary"
+              : "border-border bg-card text-foreground hover:bg-muted",
+          )}
+          title="Alterna o mascaramento de nomes e e-mails nas tabelas de usuários e auditoria"
+        >
+          {ocultarDados ? (
+            <>
+              <Eye className="size-4" /> Revelar dados pessoais
+            </>
+          ) : (
+            <>
+              <EyeOff className="size-4" /> Ocultar dados pessoais
+            </>
+          )}
+        </button>
+      </div>
+
+      <Tabs defaultValue="dashboard" className="mt-2 w-full">
         <TabsList className="mb-8 grid h-12 w-full max-w-2xl grid-cols-3">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+          <TabsTrigger
+            value="dashboard"
+            className="flex items-center gap-2 text-xs sm:text-sm font-bold"
+          >
             <Activity className="size-4" /> Dashboard & Métricas
           </TabsTrigger>
-          <TabsTrigger value="usuarios" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+          <TabsTrigger
+            value="usuarios"
+            className="flex items-center gap-2 text-xs sm:text-sm font-bold"
+          >
             <Users className="size-4" /> Gestão de Usuários ({usuarios.length})
           </TabsTrigger>
-          <TabsTrigger value="auditoria" className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+          <TabsTrigger
+            value="auditoria"
+            className="flex items-center gap-2 text-xs sm:text-sm font-bold"
+          >
             <ShieldCheck className="size-4" /> Auditoria ({todosLogsAuditoria.length})
           </TabsTrigger>
         </TabsList>
 
-        {/* ================= ABA 1: DASHBOARD DE MÉTRICAS COM FILTROS CONDICIONAIS E DE DATA ================= */}
+        {/* ================= ABA 1: DASHBOARD DE MÉTRICAS ================= */}
         <TabsContent value="dashboard" className="space-y-8 animate-in fade-in-50">
-          {/* Barra de Filtros Condicionais e de Data do Dashboard */}
           <section className="neu rounded-2xl border border-border bg-card p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -451,7 +557,8 @@ function AdminSistema() {
                     Filtros de Período e Visualização Condicional
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Ajuste a janela temporal das séries históricas e filtre as dimensões analíticas do painel.
+                    Ajuste a janela temporal das séries históricas e filtre as dimensões analíticas
+                    do painel.
                   </p>
                 </div>
               </div>
@@ -480,7 +587,6 @@ function AdminSistema() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
-              {/* Seletor de Período Rápido */}
               <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                   Janela de Tempo
@@ -497,7 +603,6 @@ function AdminSistema() {
                 </select>
               </div>
 
-              {/* Datas Personalizadas */}
               <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                   De (Data Inicial)
@@ -528,7 +633,6 @@ function AdminSistema() {
                 />
               </div>
 
-              {/* Filtro Condicional de Exibição de Gráficos */}
               <div className="lg:col-span-3">
                 <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                   Foco dos Gráficos
@@ -546,18 +650,20 @@ function AdminSistema() {
               </div>
             </div>
 
-            {/* Resumo Dinâmico do Período Filtrado */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-4 py-2.5 text-xs">
               <span className="font-bold text-muted-foreground">
                 Acumulado no período selecionado ({serieGraficoFiltrada.length} dia(s)):
               </span>
               <div className="flex flex-wrap gap-4 font-bold">
                 <span>
-                  Logins: <strong className="text-success">{resumoPeriodoSelecionado.logins}</strong>
+                  Logins:{" "}
+                  <strong className="text-success">{resumoPeriodoSelecionado.logins}</strong>
                 </span>
                 <span>
                   Novos Cadastros:{" "}
-                  <strong className="text-primary">{resumoPeriodoSelecionado.novosCadastros}</strong>
+                  <strong className="text-primary">
+                    {resumoPeriodoSelecionado.novosCadastros}
+                  </strong>
                 </span>
                 <span>
                   Lições Concluídas:{" "}
@@ -571,7 +677,6 @@ function AdminSistema() {
             </div>
           </section>
 
-          {/* Linha 1: Big Numbers Globais */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard
               icon={Users}
@@ -611,7 +716,6 @@ function AdminSistema() {
             />
           </div>
 
-          {/* Linha 2: Resumo Rápido do Acervo da Plataforma */}
           <section className="neu rounded-2xl border border-border bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-2">
@@ -642,7 +746,6 @@ function AdminSistema() {
             </div>
           </section>
 
-          {/* Linha 3: Gráficos de Evolução Temporal */}
           {(visaoGraficos === "todos" ||
             visaoGraficos === "acessos" ||
             visaoGraficos === "pedagogico") && (
@@ -658,14 +761,23 @@ function AdminSistema() {
                     Acessos Ativos vs. Novos Cadastros ({serieGraficoFiltrada.length} dias)
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Volume diário de estudantes com login registrado e novas contas criadas no período filtrado.
+                    Volume diário de estudantes com login registrado e novas contas criadas no
+                    período filtrado.
                   </p>
                   <div className="mt-4 h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={serieGraficoFiltrada}>
-                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                        <CartesianGrid
+                          strokeDasharray="4 4"
+                          vertical={false}
+                          stroke="var(--border)"
+                        />
                         <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                        <YAxis
+                          stroke="var(--muted-foreground)"
+                          fontSize={11}
+                          allowDecimals={false}
+                        />
                         <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Line
@@ -696,14 +808,23 @@ function AdminSistema() {
                     Engajamento Pedagógico: Aulas & Exercícios ({serieGraficoFiltrada.length} dias)
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Quantidade de lições finalizadas e exercícios submetidos diariamente no período filtrado.
+                    Quantidade de lições finalizadas e exercícios submetidos diariamente no período
+                    filtrado.
                   </p>
                   <div className="mt-4 h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={serieGraficoFiltrada}>
-                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                        <CartesianGrid
+                          strokeDasharray="4 4"
+                          vertical={false}
+                          stroke="var(--border)"
+                        />
                         <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={11} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
+                        <YAxis
+                          stroke="var(--muted-foreground)"
+                          fontSize={11}
+                          allowDecimals={false}
+                        />
                         <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar
@@ -726,7 +847,6 @@ function AdminSistema() {
             </div>
           )}
 
-          {/* Linha 3.5: Análise Demográfica por Faixa Etária (Público-Alvo conforme Termos de Uso / LGPD) */}
           {(visaoGraficos === "todos" || visaoGraficos === "demografia") && (
             <section className="neu rounded-2xl border border-border bg-card p-6 space-y-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -739,7 +859,8 @@ function AdminSistema() {
                       Perfil Demográfico por Faixa Etária (Público-Alvo — Art. 14 LGPD)
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Distribuição estatística calculada a partir do ano de nascimento coletado no cadastro (Seção 2 da Política de Privacidade).
+                      Distribuição estatística calculada a partir do ano de nascimento coletado no
+                      cadastro (Seção 2 da Política de Privacidade).
                     </p>
                   </div>
                 </div>
@@ -758,11 +879,14 @@ function AdminSistema() {
               </div>
 
               <div className="grid gap-6 lg:grid-cols-12 items-center">
-                {/* Gráfico de Barras por Faixa Etária */}
                 <div className="h-64 lg:col-span-7">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={demografiaEtaria}>
-                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
+                      <CartesianGrid
+                        strokeDasharray="4 4"
+                        vertical={false}
+                        stroke="var(--border)"
+                      />
                       <XAxis dataKey="faixa" stroke="var(--muted-foreground)" fontSize={11} />
                       <YAxis stroke="var(--muted-foreground)" fontSize={11} allowDecimals={false} />
                       <Tooltip contentStyle={{ borderRadius: 8, border: "none" }} />
@@ -777,7 +901,6 @@ function AdminSistema() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Detalhamento Percentual por Segmento Etário */}
                 <div className="space-y-3 lg:col-span-5">
                   {demografiaEtaria.map((item) => (
                     <div
@@ -808,15 +931,13 @@ function AdminSistema() {
             </section>
           )}
 
-          {/* Linha 4: Taxa de Acerto Global por Tópico com Filtros Condicionais */}
           <section className="neu rounded-2xl border border-border bg-card p-6 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="font-display text-lg">
-                  Taxa de Acerto Global por Tópico Musical
-                </h2>
+                <h2 className="font-display text-lg">Taxa de Acerto Global por Tópico Musical</h2>
                 <p className="text-xs text-muted-foreground">
-                  Filtre condicionalmente os tópicos por faixa de domínio pedagógico ou ordene por criticidade.
+                  Filtre condicionalmente os tópicos por faixa de domínio pedagógico ou ordene por
+                  criticidade.
                 </p>
               </div>
               <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold">
@@ -824,7 +945,6 @@ function AdminSistema() {
               </span>
             </div>
 
-            {/* Controles Condicionais de Tópicos */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
               <div className="relative md:col-span-5">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -914,16 +1034,20 @@ function AdminSistema() {
           </section>
         </TabsContent>
 
-        {/* ================= ABA 2: GESTÃO DE USUÁRIOS COM FILTROS E PAGINAÇÃO ================= */}
+        {/* ================= ABA 2: GESTÃO DE USUÁRIOS ================= */}
         <TabsContent value="usuarios" className="space-y-4 animate-in fade-in-50">
           <section className="neu overflow-hidden rounded-2xl border border-border bg-card">
-            {/* Barra de Filtros */}
             <div className="border-b border-border p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="font-display text-lg">Controle de Contas e Papéis (RBAC)</h2>
                   <p className="text-sm text-muted-foreground">
-                    Pesquise por nome ou e-mail e filtre por status ou nível de permissão.
+                    Pesquise por nome ou e-mail e filtre por status ou nível de permissão.{" "}
+                    {ocultarDados && (
+                      <span className="font-semibold text-primary">
+                        (Modo privacidade ativo: dados mascarados na tela)
+                      </span>
+                    )}
                   </p>
                 </div>
                 <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-foreground">
@@ -932,7 +1056,6 @@ function AdminSistema() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
-                {/* Busca por Nome ou E-mail */}
                 <div className="relative md:col-span-6">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -943,7 +1066,6 @@ function AdminSistema() {
                   />
                 </div>
 
-                {/* Filtro por Status (Ativo / Suspenso) */}
                 <div className="flex items-center gap-2 md:col-span-3">
                   <Filter className="size-4 shrink-0 text-muted-foreground" />
                   <select
@@ -961,7 +1083,6 @@ function AdminSistema() {
                   </select>
                 </div>
 
-                {/* Filtro por Papel (Role) */}
                 <div className="md:col-span-3">
                   <select
                     value={filtroRole}
@@ -977,16 +1098,15 @@ function AdminSistema() {
               </div>
             </div>
 
-            {/* Tabela de Usuários */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-sm">
+              <table className="w-full min-w-[820px] text-sm">
                 <thead>
                   <tr className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="p-4 font-bold">Nome</th>
                     <th className="p-4 font-bold">E-mail</th>
                     <th className="p-4 font-bold">Nível de Acesso (Papel)</th>
                     <th className="p-4 font-bold">Status da Conta</th>
-                    <th className="p-4 text-right font-bold">Ação Rápida</th>
+                    <th className="p-4 text-right font-bold">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -997,74 +1117,81 @@ function AdminSistema() {
                       </td>
                     </tr>
                   ) : (
-                    usuariosPaginados.map((u) => (
-                      <tr
-                        key={u.id}
-                        className="border-b border-border transition-colors hover:bg-muted/20"
-                      >
-                        <td className="p-4 font-bold">{u.nome}</td>
-                        <td className="p-4 text-muted-foreground">{u.email}</td>
-                        <td className="p-4">
-                          <select
-                            value={
-                              u.role === "admin-conteudo"
-                                ? "conteudo"
-                                : u.role === "admin-sistema"
-                                  ? "sistema"
-                                  : u.role === "usuario"
-                                    ? "estudante"
-                                    : u.role
-                            }
-                            onChange={(e) => handleUpdateRole(u.id, e.target.value as Role)}
-                            className="focus-ring h-9 cursor-pointer rounded-lg border border-border bg-background px-3 py-1 text-xs font-bold transition-all hover:bg-muted"
-                          >
-                            {ROLE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-                              u.ativo
-                                ? "bg-success/15 text-success"
-                                : "bg-destructive/15 text-destructive",
-                            )}
-                          >
+                    usuariosPaginados.map((u) => {
+                      const currentRoleVal = normalizeRole(u.role);
+                      return (
+                        <tr
+                          key={u.id}
+                          className="border-b border-border transition-colors hover:bg-muted/20"
+                        >
+                          <td className="p-4 font-bold">
+                            {ocultarDados ? maskName(u.nome) : u.nome}
+                          </td>
+                          <td className="p-4 text-muted-foreground">
+                            {ocultarDados ? maskEmail(u.email) : u.email}
+                          </td>
+                          <td className="p-4">
+                            <select
+                              value={currentRoleVal}
+                              onChange={(e) => handleUpdateRole(u.id, e.target.value as Role)}
+                              className="focus-ring h-9 cursor-pointer rounded-lg border border-border bg-background px-3 py-1 text-xs font-bold transition-all hover:bg-muted"
+                            >
+                              {ROLE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-4">
                             <span
                               className={cn(
-                                "size-1.5 rounded-full",
-                                u.ativo ? "bg-success" : "bg-destructive",
+                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                                u.ativo
+                                  ? "bg-success/15 text-success"
+                                  : "bg-destructive/15 text-destructive",
                               )}
-                            />
-                            {u.ativo ? "Ativo" : "Suspenso"}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            type="button"
-                            className={cn(
-                              "rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
-                              u.ativo
-                                ? "border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-                                : "border-success/30 text-success hover:bg-success hover:text-white",
-                            )}
-                            onClick={() => handleToggleStatus(u.id, u.ativo)}
-                          >
-                            {u.ativo ? "Suspender" : "Reativar"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                            >
+                              <span
+                                className={cn(
+                                  "size-1.5 rounded-full",
+                                  u.ativo ? "bg-success" : "bg-destructive",
+                                )}
+                              />
+                              {u.ativo ? "Ativo" : "Suspenso"}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setUsuarioSelecionadoModal(u)}
+                                className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted"
+                              >
+                                Detalhes
+                              </button>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
+                                  u.ativo
+                                    ? "border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                                    : "border-success/30 text-success hover:bg-success hover:text-white",
+                                )}
+                                onClick={() => handleToggleStatus(u.id, u.ativo)}
+                              >
+                                {u.ativo ? "Suspender" : "Reativar"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
 
-            {/* Controles de Paginação de Usuários */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-4 text-xs">
               <span className="font-semibold text-muted-foreground">
                 Página {paginaAtual} de {totalPaginas} · Mostrando{" "}
@@ -1115,26 +1242,29 @@ function AdminSistema() {
           </section>
         </TabsContent>
 
-        {/* ================= ABA 3: TRILHA DE AUDITORIA (IMUTÁVEL) COM FILTROS ================= */}
+        {/* ================= ABA 3: TRILHA DE AUDITORIA ================= */}
         <TabsContent value="auditoria" className="space-y-4 animate-in fade-in-50">
           <section className="neu overflow-hidden rounded-2xl border border-border bg-card">
-            {/* Cabeçalho e Filtros da Auditoria */}
             <div className="border-b border-border p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <FileSearch className="size-5 text-primary" />
                   <div>
-                    <h2 className="font-display text-lg">
-                      Painel de Auditoria
-                    </h2>
+                    <h2 className="font-display text-lg">Painel de Auditoria</h2>
                     <p className="text-sm text-muted-foreground">
-                      Filtre eventos do sistema por usuário associado (e-mail/nome/IP), ação registrada e intervalo de datas.
+                      Filtre eventos por usuário associado, categoria, ação e intervalo de datas.{" "}
+                      {ocultarDados && (
+                        <span className="font-semibold text-primary">
+                          (E-mails mascarados na tela)
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {(auditUsuarioBusca ||
                     auditAcaoFiltro !== "todas" ||
+                    auditCategoriaFiltro !== "todas" ||
                     auditDataInicio ||
                     auditDataFim) && (
                     <button
@@ -1142,6 +1272,7 @@ function AdminSistema() {
                       onClick={() => {
                         setAuditUsuarioBusca("");
                         setAuditAcaoFiltro("todas");
+                        setAuditCategoriaFiltro("todas");
                         setAuditDataInicio("");
                         setAuditDataFim("");
                       }}
@@ -1151,14 +1282,14 @@ function AdminSistema() {
                     </button>
                   )}
                   <span className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-foreground">
-                    Exibindo {logsAuditoriaFiltrados.length} de {todosLogsAuditoria.length} evento(s)
+                    Exibindo {logsAuditoriaFiltrados.length} de {todosLogsAuditoria.length}{" "}
+                    evento(s)
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
-                {/* Busca por Usuário Associado / IP */}
-                <div className="lg:col-span-4">
+                <div className="lg:col-span-3">
                   <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                     Usuário Associado / IP
                   </label>
@@ -1167,13 +1298,30 @@ function AdminSistema() {
                     <Input
                       value={auditUsuarioBusca}
                       onChange={(e) => setAuditUsuarioBusca(e.target.value)}
-                      placeholder="E-mail, nome ou IP de origem..."
+                      placeholder="E-mail, nome ou IP..."
                       className="pl-9 text-xs h-10"
                     />
                   </div>
                 </div>
 
-                {/* Filtro por Ação */}
+                <div className="lg:col-span-2">
+                  <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
+                    Categoria
+                  </label>
+                  <select
+                    value={auditCategoriaFiltro}
+                    onChange={(e) => setAuditCategoriaFiltro(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-xs font-bold"
+                  >
+                    <option value="todas">Todas</option>
+                    {categoriasUnicasAuditoria.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="lg:col-span-3">
                   <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
                     Ação / Evento Registrado
@@ -1192,11 +1340,10 @@ function AdminSistema() {
                   </select>
                 </div>
 
-                {/* Filtro por Data Inicial e Data Final com largura confortável */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-5">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:col-span-4">
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                      De (Data Inicial)
+                      De (Data)
                     </label>
                     <input
                       type="date"
@@ -1207,7 +1354,7 @@ function AdminSistema() {
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase text-muted-foreground">
-                      Até (Data Final)
+                      Até (Data)
                     </label>
                     <input
                       type="date"
@@ -1220,12 +1367,12 @@ function AdminSistema() {
               </div>
             </div>
 
-            {/* Tabela de Eventos de Auditoria (Sem coluna de Payload) */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-xs">
+              <table className="w-full min-w-[760px] text-left text-xs">
                 <thead>
                   <tr className="bg-muted/50 uppercase tracking-wide text-muted-foreground">
                     <th className="p-4 font-bold">Evento / Ação</th>
+                    <th className="p-4 font-bold">Categoria</th>
                     <th className="p-4 font-bold">Usuário Associado</th>
                     <th className="p-4 font-bold">IP de Origem</th>
                     <th className="p-4 text-right font-bold">Data / Hora (BRT)</th>
@@ -1234,7 +1381,7 @@ function AdminSistema() {
                 <tbody className="divide-y divide-border">
                   {logsAuditoriaPaginados.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
                         Nenhum registro de auditoria encontrado para os filtros informados.
                       </td>
                     </tr>
@@ -1251,11 +1398,16 @@ function AdminSistema() {
                             {log.action}
                           </span>
                         </td>
+                        <td className="p-4 font-semibold text-muted-foreground">
+                          {getAuditCategoryLabel(log.action)}
+                        </td>
                         <td className="p-4">
-                          <div className="font-bold text-foreground">{log.usuario}</div>
+                          <div className="font-bold text-foreground">
+                            {ocultarDados ? maskEmail(log.usuario) : log.usuario}
+                          </div>
                           {log.nome_usuario && (
                             <div className="text-[11px] text-muted-foreground">
-                              {log.nome_usuario}
+                              {ocultarDados ? maskName(log.nome_usuario) : log.nome_usuario}
                             </div>
                           )}
                         </td>
@@ -1270,18 +1422,13 @@ function AdminSistema() {
               </table>
             </div>
 
-            {/* Controles de Paginação da Auditoria */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-4 text-xs">
               <span className="font-semibold text-muted-foreground">
                 Página {paginaAuditoria} de {totalPaginasAuditoria} · Mostrando{" "}
                 {logsAuditoriaFiltrados.length === 0
                   ? 0
                   : (paginaAuditoria - 1) * AUDIT_ITEMS_PER_PAGE + 1}
-                –
-                {Math.min(
-                  paginaAuditoria * AUDIT_ITEMS_PER_PAGE,
-                  logsAuditoriaFiltrados.length,
-                )}{" "}
+                –{Math.min(paginaAuditoria * AUDIT_ITEMS_PER_PAGE, logsAuditoriaFiltrados.length)}{" "}
                 de {logsAuditoriaFiltrados.length} eventos
               </span>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1309,9 +1456,7 @@ function AdminSistema() {
                 <button
                   type="button"
                   disabled={paginaAuditoria >= totalPaginasAuditoria}
-                  onClick={() =>
-                    setPaginaAuditoria((p) => Math.min(totalPaginasAuditoria, p + 1))
-                  }
+                  onClick={() => setPaginaAuditoria((p) => Math.min(totalPaginasAuditoria, p + 1))}
                   className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 font-bold hover:bg-muted disabled:opacity-40"
                 >
                   Próxima <ChevronRight className="size-4" />
@@ -1329,6 +1474,121 @@ function AdminSistema() {
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* ================= POPUP / MODAL DE DETALHES E GESTÃO DO USUÁRIO ================= */}
+      {usuarioSelecionadoModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detalhes da Conta do Usuário"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+          onClick={() => setUsuarioSelecionadoModal(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <UserCheck className="size-5" />
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-bold">Detalhes da Conta</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Gestão de papel e status com controle de exposição.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUsuarioSelecionadoModal(null)}
+                aria-label="Fechar modal"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+                  Nome
+                </span>
+                <span className="font-bold text-foreground">
+                  {ocultarDados
+                    ? maskName(usuarioSelecionadoModal.nome)
+                    : usuarioSelecionadoModal.nome}
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+                  E-mail
+                </span>
+                <span className="font-mono text-foreground">
+                  {ocultarDados
+                    ? maskEmail(usuarioSelecionadoModal.email)
+                    : usuarioSelecionadoModal.email}
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+                  ID (UUID)
+                </span>
+                <span className="font-mono text-[11px] text-muted-foreground break-all">
+                  {usuarioSelecionadoModal.id}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold uppercase text-muted-foreground">
+                  Nível de Acesso (RBAC)
+                </label>
+                <select
+                  value={normalizeRole(usuarioSelecionadoModal.role)}
+                  onChange={(e) =>
+                    handleUpdateRole(usuarioSelecionadoModal.id, e.target.value as Role)
+                  }
+                  className="focus-ring h-10 w-full cursor-pointer rounded-lg border border-border bg-background px-3 text-xs font-bold"
+                >
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() =>
+                  handleToggleStatus(usuarioSelecionadoModal.id, usuarioSelecionadoModal.ativo)
+                }
+                className={cn(
+                  "rounded-lg border px-4 py-2 text-xs font-bold transition-colors",
+                  usuarioSelecionadoModal.ativo
+                    ? "border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                    : "border-success/30 text-success hover:bg-success hover:text-white",
+                )}
+              >
+                {usuarioSelecionadoModal.ativo ? "Suspender Conta" : "Reativar Conta"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUsuarioSelecionadoModal(null)}
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
