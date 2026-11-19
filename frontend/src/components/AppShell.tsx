@@ -1,9 +1,8 @@
-// Adicionando avatar escolhido na barra superior e alterando o "Usuário" para "Aluno", por Anny em 12/10.
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { createAvatar } from "@dicebear/core";
 import { bottts, avataaars } from "@dicebear/collection";
 import { Link, useRouterState, Navigate } from "@tanstack/react-router";
-import { Flame, LogOut, Sparkles, UserCircle, Settings } from "lucide-react";
+import { Flame, LogOut, Sparkles, Settings } from "lucide-react";
 import { LinusLogo } from "./Logo";
 import { AiAssistant } from "./AiAssistant";
 import { useLinus, ROLE_LABEL } from "@/context/LinusContext";
@@ -17,10 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const API_URL = `${
-  (import.meta.env.VITE_API_URL || "http://localhost:8000")
-    .replace(/\/+$/, "")
-}/api/v1`;
+const API_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+)}/api/v1`;
+
+const COOKIE_CONSENT_KEY = "linus.cookie_consent";
 
 const NAV: { to: string; label: string; roles: string[] }[] = [
   { to: "/trilha", label: "Trilha", roles: ["estudante", "usuario"] },
@@ -41,25 +42,76 @@ export function getHomeByRole(role?: string): string {
   return "/painel";
 }
 
+export function CookieConsentBanner() {
+  const [accepted, setAccepted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(COOKIE_CONSENT_KEY) === "accepted";
+  });
+
+  if (accepted) return null;
+
+  const handleAccept = () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    setAccepted(true);
+  };
+
+  return (
+    <div
+      role="region"
+      aria-label="Aviso de Cookies e Privacidade"
+      className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-4xl rounded-2xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur-md sm:p-5"
+    >
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+          <p className="font-display text-sm font-bold text-foreground">
+            Transparência sobre Cookies e Armazenamento Local (LGPD)
+          </p>
+          <p>
+            O <strong>Linus</strong> não utiliza cookies de publicidade ou rastreamento comercial.
+            Utilizamos apenas <strong>cookies técnicos estritamente necessários</strong> (como na
+            autenticação federada Google OAuth 2.0) e armazenamento local (<code>localStorage</code>
+            ) para manter sua sessão segura e seu progresso pedagógico. Consulte nossa{" "}
+            <Link
+              to="/termos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-primary underline hover:opacity-80"
+            >
+              Política de Privacidade e Termos de Uso
+            </Link>
+            .
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAccept}
+          className="focus-ring shrink-0 rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-neu-sm transition-transform active:translate-y-0.5"
+        >
+          Concordar e Continuar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { state, ready, logout } = useLinus();
   const [aiOpen, setAiOpen] = useState(false);
-
   const [avatarOptions, setAvatarOptions] = useState<any>(null);
 
   useEffect(() => {
     const fetchAvatar = async () => {
-      // Só busca o avatar se o usuário estiver logado
-      if (!state.loggedIn) return; 
-      
+      if (!state.loggedIn) return;
+
       try {
         const token = localStorage.getItem("access_token");
         if (!token) return;
-        
+
         const response = await fetch(`${API_URL}/auth/me/`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data.avatar_options && Object.keys(data.avatar_options).length > 0) {
@@ -70,44 +122,44 @@ export function AppShell({ children }: { children: ReactNode }) {
         console.error("Erro ao buscar avatar", error);
       }
     };
-    fetchAvatar();
-  }, [state.loggedIn]); 
+    void fetchAvatar();
+  }, [state.loggedIn]);
 
   const avatarUri = useMemo(() => {
     try {
-      const options = avatarOptions || { seed: state.name || 'linus', collection: 'bottts' }; 
-      const selectedCollection = options.collection === 'avataaars' ? avataaars : bottts;
+      const options = avatarOptions || { seed: state.name || "linus", collection: "bottts" };
+      const selectedCollection = options.collection === "avataaars" ? avataaars : bottts;
 
       const avatar = createAvatar(selectedCollection, {
         ...options,
-        // Garantimos que a imagem pequena obedeça à mesma regra de esconder óculos
-        accessories: options.accessories?.[0] === 'none' ? [] : options.accessories,
-        accessoriesProbability: options.accessories?.[0] === 'none' ? 0 : 100,
+        accessories: options.accessories?.[0] === "none" ? [] : options.accessories,
+        accessoriesProbability: options.accessories?.[0] === "none" ? 0 : 100,
         size: 48,
         radius: 50,
-        backgroundColor: ['e2e8f0']
+        backgroundColor: ["e2e8f0"],
       } as any);
-      
+
       return avatar.toDataUri();
     } catch (error) {
       console.error("Erro ao gerar avatar no Header:", error);
-      const fallbackAvatar = createAvatar(bottts, { seed: 'erro', size: 32, backgroundColor: ['e2e8f0'] });
+      const fallbackAvatar = createAvatar(bottts, {
+        seed: "erro",
+        size: 32,
+        backgroundColor: ["e2e8f0"],
+      });
       return fallbackAvatar.toDataUri();
     }
   }, [avatarOptions, state.name]);
-  
+
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // 1. CONTROLE DE HIDRATAÇÃO
   if (!ready) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  // 2. CENTRAL DE SEGURANÇA (GUARD)
   const publicRoutes = ["/", "/triagem", "/registro", "/login", "/recuperar-senha", "/termos"];
   const isPublicRoute = publicRoutes.includes(pathname);
 
-  // Regra A: Usuário NÃO logado tentando acessar rota privada
   if (!state.loggedIn && !isPublicRoute) {
     return <Navigate to="/login" replace />;
   }
@@ -115,14 +167,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentRole = state.role || "usuario";
   const homeRoute = getHomeByRole(currentRole);
 
-  // Regra B: Validações para usuários LOGADOS
   if (state.loggedIn) {
-    // Regra B.1: Se tentar acessar Landing Page, Login ou Registro, envia para a Home do seu papel
     if (pathname === "/" || pathname === "/login" || pathname === "/registro") {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.2: Se for Admin Conteúdo ou Admin Sistema e cair em /painel, redireciona para a Home do Admin
     if (
       pathname === "/painel" &&
       ["admin-conteudo", "conteudo", "admin-sistema", "sistema"].includes(currentRole)
@@ -130,7 +179,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.3 (RBAC): Bloqueia perfis sem permissão tentando acessar Admin Conteúdo
     if (
       pathname.startsWith("/admin/conteudo") &&
       !["admin-conteudo", "conteudo"].includes(currentRole)
@@ -138,7 +186,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       return <Navigate to={homeRoute} replace />;
     }
 
-    // Regra B.4 (RBAC): Bloqueia perfis sem permissão tentando acessar Admin Sistema
     if (
       pathname.startsWith("/admin/sistema") &&
       !["admin-sistema", "sistema"].includes(currentRole)
@@ -147,12 +194,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  // 3. RENDERIZAÇÃO DAS TELAS AUTORIZADAS
   const isLesson = pathname.startsWith("/licao");
 
   if (isLesson) return <>{children}</>;
 
-  // Estrutura deslogada (Landing page, Triagem, Termos)
+  // Estrutura deslogada (Landing page, Triagem, Termos, Login, Registro)
   if (!state.loggedIn && isPublicRoute) {
     return (
       <div className="min-h-screen">
@@ -184,6 +230,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main>{children}</main>
+        <CookieConsentBanner />
       </div>
     );
   }
@@ -245,16 +292,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger className="focus-ring flex items-center gap-2 rounded-lg p-1.5 outline-none transition-colors hover:bg-muted">
                   <div className="hidden flex-col items-end md:flex">
                     <span className="text-[10px] font-bold uppercase text-primary/70">
-                      {currentRole === "usuario" ? "ALUNO" : (ROLE_LABEL?.[currentRole] || currentRole.replace("-", " "))}
+                      {currentRole === "usuario"
+                        ? "ALUNO"
+                        : ROLE_LABEL?.[currentRole] || currentRole.replace("-", " ")}
                     </span>
                     <span className="text-xs font-bold leading-tight truncate max-w-[120px]">
                       {state.name ? state.name.split(" ")[0] : "Usuário"}
                     </span>
                   </div>
-                  <img 
-                    src={avatarUri} 
-                    alt="Avatar" 
-                    className="size-16 rounded-full border border-primary/20 bg-background shadow-sm" 
+                  <img
+                    src={avatarUri}
+                    alt="Avatar"
+                    className="size-12 sm:size-14 rounded-full border border-primary/20 bg-background shadow-sm"
                   />
                 </DropdownMenuTrigger>
 
@@ -289,6 +338,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </footer>
 
       <AiAssistant open={aiOpen} onOpenChange={setAiOpen} />
+      <CookieConsentBanner />
     </div>
   );
 }
