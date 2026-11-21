@@ -4,7 +4,6 @@ from rest_framework import serializers
 from .models import Glossario
 
 class GlossarioSerializer(serializers.ModelSerializer):
-    # Campos expostos em inglês para o frontend do aluno (leitura)
     term = serializers.CharField(source='termo', read_only=True)
     definition = serializers.CharField(source='definicao', read_only=True)
     diagram = serializers.CharField(source='figura_svg', read_only=True, allow_null=True)
@@ -12,7 +11,6 @@ class GlossarioSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Glossario
-        # Exponha tanto os campos nativos do banco quanto os aliases
         fields = [
             'id', 
             'termo', 'definicao', 'figura_svg', 'categoria',

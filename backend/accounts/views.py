@@ -80,18 +80,16 @@ class LoginView(APIView):
             terms_accepted = serializer.validated_data.get('terms_accepted')
             terms_version = serializer.validated_data.get('terms_version')
             
-            # Busca manual ignora a trava do is_active=False do authenticate() padrão
             user = User.objects.filter(email=email).first()
             
             if user and user.check_password(password):
                 
-                # 1. Validação de LGPD / Reativação de Conta por revogação de termos
                 if not user.terms_accepted:
                     if terms_accepted:
                         user.terms_accepted = True
                         user.terms_version = terms_version
                         user.terms_accepted_at = timezone.now()
-                        user.is_active = True # Reativa a conta oficialmente
+                        user.is_active = True
                         user.consent_ip = AuditService.get_client_ip(request)
                         user.save()
                         AuditService.log_event(request, user, "TERMS_REACCEPTED")
@@ -101,21 +99,18 @@ class LoginView(APIView):
                             "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
                         }, status=status.HTTP_403_FORBIDDEN)
 
-                # 1.1 Trava de Segurança: Conta suspensa pelo Administrador de Sistema
                 if not user.is_active:
                     AuditService.log_event(request, user, "BLOCKED_SUSPENDED_USER_LOGIN")
                     return Response({
                         "error": "Sua conta foi suspensa pelo administrador do sistema."
                     }, status=status.HTTP_403_FORBIDDEN)
 
-                # 2. Validação de Segurança (2FA)
                 if user.is_2fa_enabled:
                     otp = SecurityService.create_2fa_token(user)
                     EmailService.send_2fa_email(user.email, otp)
                     AuditService.log_event(request, user, "2FA_OTP_SENT")
                     return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
                 
-                # 3. Login com Sucesso
                 tokens = get_tokens_for_user(user)
                 AuditService.log_event(request, user, "USER_LOGGED_IN")
                 update_last_login(None, user)
@@ -176,7 +171,6 @@ class GoogleAuthView(APIView):
                 terms_accepted = serializer.validated_data.get('terms_accepted')
                 terms_version = serializer.validated_data.get('terms_version')
 
-                # 1. Validação de LGPD / Reativação de Conta via Google
                 if not user.terms_accepted:
                     if terms_accepted:
                         user.terms_accepted = True
@@ -192,21 +186,18 @@ class GoogleAuthView(APIView):
                             "message": "Consentimento revogado. Você precisa aceitar os Termos de Uso novamente."
                         }, status=status.HTTP_403_FORBIDDEN)
 
-                # 2. Validação 2FA
                 if user.is_2fa_enabled:
                     otp = SecurityService.create_2fa_token(user)
                     EmailService.send_2fa_email(user.email, otp)
                     AuditService.log_event(request, user, "GOOGLE_LOGIN_2FA_SENT")
                     return Response({"status": "2fa_required", "message": "Código 2FA enviado para o e-mail."}, status=status.HTTP_202_ACCEPTED)
 
-                # 3. Login com Sucesso
                 tokens = get_tokens_for_user(user)
                 AuditService.log_event(request, user, "USER_LOGGED_IN_GOOGLE")
                 update_last_login(None, user)
                 return Response(tokens, status=status.HTTP_200_OK)
             
             else:
-                # Fluxo de Registro via Google
                 terms_accepted = serializer.validated_data.get('terms_accepted')
                 terms_version = serializer.validated_data.get('terms_version')
                 ano_nascimento = serializer.validated_data.get('ano_nascimento')
@@ -219,10 +210,9 @@ class GoogleAuthView(APIView):
                     }, status=status.HTTP_403_FORBIDDEN)
 
                 try:
-                    # Agora, se o create_user falhar, ele não dirá que é culpa do Token
                     user = User.objects.create_user(
                         email=email,
-                        nome=nome_usuario, # Passando o nome obrigatório
+                        nome=nome_usuario,
                         ano_nascimento=ano_nascimento,
                         terms_accepted=terms_accepted,
                         terms_version=terms_version,
@@ -313,7 +303,6 @@ class UserPrivacyDataView(APIView):
     def get(self, request):
         user = request.user
         
-        # Estruturação padronizada dos dados do titular (Art. 18, II da LGPD)
         privacy_data = {
             "id": str(user.id),
             "email": user.email,
@@ -343,7 +332,6 @@ class RevokeConsentView(APIView):
     def post(self, request):
         user = request.user
         
-        # Suspensão do consentimento e inativação de acessos
         user.terms_accepted = False
         user.is_active = False 
         user.save(update_fields=['terms_accepted', 'is_active'])
@@ -361,9 +349,6 @@ class DeleteAccountView(APIView):
     def delete(self, request):
         user = request.user
         
-        # Anonimização Criptográfica (Art. 18, IV e VI da LGPD)
-        # Os dados pessoais são destruídos, mas o ID é mantido para não quebrar a 
-        # integridade relacional dos logs de auditoria e métricas gamificadas.
         user.email = f"anon_{str(user.id)[:8]}@anon.com"
         user.nome = "********"
         user.set_unusable_password()
@@ -398,7 +383,6 @@ class UpdateProfileView(APIView):
         
         AuditService.log_event(request, user, "PROFILE_NAME_UPDATED")
         
-        # Gera um novo token para o frontend atualizar o nome no cabeçalho imediatamente
         tokens = get_tokens_for_user(user)
         return Response({"message": "Perfil atualizado com sucesso.", "tokens": tokens}, status=status.HTTP_200_OK)
 
@@ -458,7 +442,6 @@ class AdminSystemMetricsView(APIView):
         from music.models import Musica
         from progress.models import ProgressoAula
 
-        # Filtra usuários ativos/válidos (exclui contas anonimizadas pela LGPD da listagem operacional)
         valid_users = (
             User.objects.exclude(email__endswith="@anon.com")
             .exclude(email__endswith="@deleted.local")
@@ -477,7 +460,6 @@ class AdminSystemMetricsView(APIView):
         suspended_users = valid_users.filter(is_active=False).count()
         users_2fa = valid_users.filter(is_2fa_enabled=True).count()
 
-        # Distribuição por papéis (RBAC)
         distribuicao_papeis = {
             "estudantes": valid_users.filter(role__in=["estudante", "usuario"]).count(),
             "admins_conteudo": valid_users.filter(role__in=["admin-conteudo", "conteudo"]).count(),
@@ -501,7 +483,7 @@ class AdminSystemMetricsView(APIView):
             "gravacoes_playground": Musica.objects.count(),
         }
 
-        # Série histórica parametrizável (padrão 7 dias; até 90 dias para filtros do Dashboard)
+        # padrão 7 dias; até 90 dias para filtros do Dashboard
         try:
             dias_param = int(request.query_params.get("days", 7))
             num_dias = min(max(dias_param, 1), 90)
@@ -535,7 +517,6 @@ class AdminSystemMetricsView(APIView):
                 "exercicios": tentativas_dia,
             })
 
-        # Análise Demográfica por Faixa Etária (Art. 14 e Seção 2 da Política de Privacidade - LGPD)
         # Inclui os anos de nascimento retidos para fins estatísticos
         anos_nascimento = list(
             User.objects.filter(ano_nascimento__isnull=False).values_list("ano_nascimento", flat=True)
@@ -587,7 +568,6 @@ class AdminSystemMetricsView(APIView):
             "faixa_predominante": faixa_predominante,
         }
 
-        # Desempenho agregado por tópico musical
         por_topico_qs = (
             TentativaExercicio.objects.values("exercicio__tag_topico")
             .annotate(
@@ -609,7 +589,6 @@ class AdminSystemMetricsView(APIView):
                 "precisao": round((ac / tot) * 100, 1) if tot > 0 else 0,
             })
 
-        # Eventos de auditoria e segurança
         sete_dias_atras = timezone.now() - timedelta(days=7)
         eventos_7d = AuditLog.objects.filter(timestamp__gte=sete_dias_atras).count()
         falhas_login_7d = AuditLog.objects.filter(
@@ -671,7 +650,6 @@ class AdminSystemUsersView(APIView):
     def get(self, request, user_id=None):
         self.check_admin(request)
         
-        # FILTRO LGPD: Remove os usuários com a máscara de exclusão da tabela
         users = User.objects.exclude(email__endswith="@anon.com").order_by('-created_at')
         
         reverse_role_map = {
@@ -763,6 +741,5 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated] 
 
-    #Atualiza o utilizador associado a sessão
     def get_object(self):
         return self.request.user

@@ -13,7 +13,6 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Carrega variáveis do .env no ambiente local
 env_path = BASE_DIR / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -70,7 +69,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# Proteção Rigorosa de CORS (Não permitir ALL_ORIGINS em produção)
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080").split(",")
@@ -141,7 +139,6 @@ SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SAMESITE = "Strict"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Permite previews dinâmicos da Vercel se necessário e domínios de produção
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.getenv(
@@ -234,7 +231,6 @@ if 'test' in sys.argv:
         }
     }
 
-# Integração Google OAuth 2.0
 GOOGLE_OAUTH2_CLIENT_ID = os.environ.get("GOOGLE_OAUTH2_CLIENT_ID", "")
 
 LANGUAGE_CODE = "pt-br"

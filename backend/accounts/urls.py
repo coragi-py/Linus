@@ -16,17 +16,14 @@ urlpatterns = [
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('logout/', LogoutView.as_view(), name='logout'),
 
-    # Endpoints LGPD
     path('privacy/data/', UserPrivacyDataView.as_view(), name='privacy-data'),
     path('privacy/revoke-consent/', RevokeConsentView.as_view(), name='privacy-revoke-consent'),
     path('privacy/delete-account/', DeleteAccountView.as_view(), name='privacy-delete-account'),
 
-    # Endpoints de gestão de perfil
     path('profile/update/', UpdateProfileView.as_view(), name='profile-update'),
     path('password/change/', ChangePasswordView.as_view(), name='password-change'),
     path('me/', UserProfileView.as_view(), name='user-profile'),
 
-    # Endpoints Administrativos
     path('admin/metrics/', AdminSystemMetricsView.as_view(), name='admin-metrics'),
     path('admin/users/', AdminSystemUsersView.as_view(), name='admin-users-list'),
     path('admin/users/<str:user_id>/', AdminSystemUsersView.as_view(), name='admin-users-detail'),
