@@ -57,7 +57,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
 
     nome = models.CharField(
-        max_length=30,
+        max_length=100,
         validators=[validar_nickname_apropriado],
         help_text="Nome de usuário"
     )
