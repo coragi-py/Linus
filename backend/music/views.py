@@ -36,11 +36,9 @@ class MusicaViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         user = self.request.user
-        # Impede que alunos comuns excluam as amostras públicas da plataforma
         if instance.id_usuario is None:
             if not (user and user.is_authenticated and (user.is_staff or user.is_superuser)):
                 raise PermissionDenied("As músicas de amostra pública não podem ser excluídas.")
-        # Garante que apenas o dono da gravação possa excluí-la
         elif not user or not user.is_authenticated or instance.id_usuario != user:
             raise PermissionDenied("Você só pode excluir suas próprias gravações.")
 

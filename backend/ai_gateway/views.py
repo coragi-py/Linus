@@ -6,7 +6,6 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework import status
 from google import genai
 
-# Singleton/Lazy initialization para evitar recriar o cliente HTTP a cada requisição
 _genai_client = None
 
 

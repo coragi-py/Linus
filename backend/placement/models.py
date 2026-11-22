@@ -33,7 +33,7 @@ class PerguntaTriagem(models.Model):
     tipo = models.CharField(max_length=50, choices=[('texto', 'Texto'), ('partitura', 'Partitura')], default='texto') # O tipo de pergunta, que pode ser "texto" ou "partitura". Dependendo do tipo, a pergunta será renderizada de maneira diferente na interface do usuário.
     dados_partitura = models.JSONField(null=True, blank=True) # Um campo JSON opcional que armazena os dados da partitura musical, caso a pergunta seja do tipo "partitura". Esses dados podem incluir informações sobre notas musicais, compassos, etc., que serão usados para renderizar a partitura na interface do usuário. Caso seja tipo "texto", esse campo pode ser nulo ou vazio.
     ordem = models.IntegerField(default=0) # A ordem em que a pergunta será exibida durante a triagem. Perguntas com valores de ordem mais baixos serão exibidas antes das perguntas com valores de ordem mais altos.
-    ativo = models.BooleanField(default=True) # Um campo booleano que indica se a pergunta está ativa e deve ser exibida durante a triagem. Perguntas inativas não serão apresentadas aos usuários.
+    ativo = models.BooleanField(default=True) # Perguntas inativas não serão apresentadas aos usuários.
 
     class Meta:
         db_table = "TB_PERGUNTA_TRIAGEM"
