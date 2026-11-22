@@ -7,10 +7,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 def validar_nickname_apropriado(value):
-    """
-    Validador para bloquear palavras impróprias ou reservadas no nickname.
-    """
-    # Lista de termos bloqueados
+
     blacklist = [
         'admin', 'administrador', 'root', 'suporte', 'linus', 'sistema',
         'palavrao1', 'palavrao2'
@@ -39,7 +36,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('role', CustomUser.Role.ADMIN_SISTEMA)
-        extra_fields.setdefault('nome', 'Administrador') # Fallback para superuser
+        extra_fields.setdefault('nome', 'Administrador')
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser deve ter is_staff=True.')
@@ -58,17 +55,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, max_length=50, db_index=True)
     
-    # Novo campo de Nickname com validação
+
     nome = models.CharField(
-        max_length=100,
+        max_length=30,
         validators=[validar_nickname_apropriado],
         help_text="Nome de usuário"
     )
     
-    # Dados do Usuário
     ano_nascimento = models.IntegerField(null=True, blank=True)
 
-    # Avatar
     avatar_options = models.JSONField(
         default=dict,
         blank=True,
@@ -76,30 +71,26 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text="Configurações do avatar geradas pelo DiceBear no Front End"
     )
     
-    # RBAC (Role-Based Access Control)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.USUARIO)
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    # Autenticação e Segurança
     is_2fa_enabled = models.BooleanField(default=True)
 
-    # Conformidade LGPD
     terms_accepted = models.BooleanField(default=False)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=50, null=True, blank=True)
     consent_ip = models.GenericIPAddressField(null=True, blank=True)
     anonymized_at = models.DateTimeField(null=True, blank=True)
 
-    # Metadados
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nome'] # Exigido ao rodar createsuperuser no terminal
+    REQUIRED_FIELDS = ['nome']
 
     class Meta:
         db_table = 'TB_USUARIO'
